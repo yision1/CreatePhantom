@@ -1,0 +1,16 @@
+{
+	"format_version": "1.21.11",
+	"credit": "Made with Blockbench",
+	"parent": "minecraft:item/generated",
+	"textures": {
+		"layer0": "createphantom:item/storage_channel_extension_card"
+	},
+	"overrides": [
+		{"predicate": {"createphantom:linked": 1}, "model": "createphantom:item/storage_channel_extension_card_on"}
+	],
+	"display": {
+		"gui": {
+			"scale": [0.8, 0.8, 0.8]
+		}
+	}
+}

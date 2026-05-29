@@ -1,0 +1,8 @@
+{
+	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"parent": "createphantom:item/tunable_portable_ticker",
+	"textures": {
+		"wire": "createphantom:item/tunable_portable_ticker"
+	}
+}

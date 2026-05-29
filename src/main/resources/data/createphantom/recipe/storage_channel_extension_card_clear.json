@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "createphantom:storage_channel_extension_card"
+    }
+  ],
+  "result": {
+    "id": "createphantom:storage_channel_extension_card",
+    "count": 1
+  }
+}

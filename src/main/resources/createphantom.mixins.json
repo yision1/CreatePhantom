@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "package": "com.yision.phantom.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "BeltInventoryAccessor",
+    "BeltBlockMixin",
+    "BeltBlockEntityMixin",
+    "BeltInventoryMixin",
+    "ItemHandlerBeltSegmentMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

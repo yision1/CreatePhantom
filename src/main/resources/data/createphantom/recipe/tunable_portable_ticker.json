@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "create:stock_link"
+    },
+    {
+      "item": "create:stock_ticker"
+    },
+    {
+      "item": "create:redstone_link"
+    },
+    {
+      "item": "create:clipboard"
+    }
+  ],
+  "result": {
+    "id": "createphantom:tunable_portable_ticker",
+    "count": 1
+  }
+}

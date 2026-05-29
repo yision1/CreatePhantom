@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=east,open=false": {
+      "model": "createphantom:block/phantomport/block",
+      "y": 90
+    },
+    "facing=east,open=true": {
+      "model": "createphantom:block/phantomport/block_on",
+      "y": 90
+    },
+    "facing=north,open=false": {
+      "model": "createphantom:block/phantomport/block"
+    },
+    "facing=north,open=true": {
+      "model": "createphantom:block/phantomport/block_on"
+    },
+    "facing=south,open=false": {
+      "model": "createphantom:block/phantomport/block",
+      "y": 180
+    },
+    "facing=south,open=true": {
+      "model": "createphantom:block/phantomport/block_on",
+      "y": 180
+    },
+    "facing=west,open=false": {
+      "model": "createphantom:block/phantomport/block",
+      "y": 270
+    },
+    "facing=west,open=true": {
+      "model": "createphantom:block/phantomport/block_on",
+      "y": 270
+    }
+  }
+}

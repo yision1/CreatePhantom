@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "createphantom:tunable_portable_ticker"
+    }
+  ],
+  "result": {
+    "id": "createphantom:tunable_portable_ticker",
+    "count": 1
+  }
+}

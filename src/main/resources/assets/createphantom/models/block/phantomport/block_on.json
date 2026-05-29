@@ -1,0 +1,7 @@
+{
+  "parent": "createphantom:block/phantomport/block",
+  "textures": {
+    "2": "createphantom:block/phantomport/phantomport_on",
+    "particle": "createphantom:block/phantomport/phantomport_on"
+  }
+}
