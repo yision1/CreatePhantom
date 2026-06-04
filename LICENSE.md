@@ -1,3 +1,21 @@
+# License Overview
+
+## Assets License (All Rights Reserved)
+
+All Rights Reserved
+
+Copyright (c) Yision
+
+This license applies to any files under the following directories:
+
+- ./src/main/resources/assets/
+
+---
+
+## Code License (BSD 3-Clause)
+
+All other files are licensed under the BSD 3-Clause License:
+
 BSD 3-Clause License
 
 Copyright (c) 2025, Yison
