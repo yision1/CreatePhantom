@@ -192,7 +192,7 @@ public final class AirCourierDeliveryService {
 	public static @Nullable PhantomPortBlockEntity resolveTargetPhantomPort(
 		@Nullable ServerLevel level, @Nullable BlockPos pos
 	) {
-		if (level == null || pos == null) return null;
+		if (level == null || pos == null || !level.isPositionEntityTicking(pos)) return null;
 		return level.getBlockEntity(pos) instanceof PhantomPortBlockEntity be ? be : null;
 	}
 

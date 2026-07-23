@@ -9,6 +9,7 @@ import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry;
 import com.yision.phantom.config.AllConfigs;
 import com.yision.phantom.logistics.courier.AirCourierTaskManager;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
+import com.yision.phantom.item.ticker.TunablePortableTickerSession;
 import com.yision.phantom.network.AllPackets;
 import com.yision.phantom.registry.AllAttachmentTypes;
 import com.yision.phantom.registry.AllBlockEntityTypes;
@@ -61,6 +62,18 @@ public class CreatePhantom {
 
 		NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartingEvent event) ->
 			AirCourierTaskManager.onServerStarting(event.getServer()));
+		NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent event) -> {
+			AirCourierTaskManager.onServerStopping();
+			AirCourierHudSync.clearAll();
+			PhantomPortTargetRegistry.clearAll();
+			TunablePortableTickerSession.clearAll();
+		});
+		NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) -> {
+			if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+				AirCourierHudSync.clearPlayer(player);
+				TunablePortableTickerSession.clearPlayer(player);
+			}
+		});
 	}
 
 	public static ResourceLocation asResource(String path) {

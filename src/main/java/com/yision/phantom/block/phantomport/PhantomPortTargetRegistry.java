@@ -83,13 +83,13 @@ public final class PhantomPortTargetRegistry {
 				.filter(entry -> PhantomAddressRules.matches(normalized, entry.getValue().address))
 				.filter(entry -> !isExcluded(levelEntry.getKey(), entry.getKey(), excludedDimension, excludedPos))
 				.map(entry -> new TargetLocation(levelEntry.getKey(), entry.getKey(), entry.getValue().address)))
-			.filter(predicate)
 			.sorted(Comparator
 				.<TargetLocation>comparingInt(target -> target.dimension().equals(level.dimension()) ? 0 : 1)
 				.thenComparingInt(target -> exactMatch(normalized, target.address()) ? 0 : 1)
 				.thenComparingDouble(target -> target.dimension().equals(level.dimension()) ? distanceTo(origin, target.pos()) : 0)
 				.thenComparing(target -> target.dimension().location().toString())
 				.thenComparing(TargetLocation::address))
+			.filter(predicate)
 			.findFirst()
 			.orElse(null);
 	}
@@ -107,10 +107,17 @@ public final class PhantomPortTargetRegistry {
 
 	public static void onServerTick(ServerTickEvent.Post event) {
 		int currentTick = event.getServer().getTickCount();
+		if (currentTick % 20 != 0) {
+			return;
+		}
 		TARGETS.entrySet().removeIf(levelEntry -> {
 			levelEntry.getValue().entrySet().removeIf(entry -> currentTick - entry.getValue().lastSeenTick > ENTRY_TIMEOUT_TICKS);
 			return levelEntry.getValue().isEmpty();
 		});
+	}
+
+	public static void clearAll() {
+		TARGETS.clear();
 	}
 
 	private static String normalize(String address) {

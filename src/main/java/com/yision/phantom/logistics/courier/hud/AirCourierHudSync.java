@@ -118,6 +118,8 @@ public final class AirCourierHudSync {
 
 	public static void onServerTick(ServerTickEvent.Post event) {
 		int currentTick = event.getServer().getTickCount();
+		if (currentTick % 20 != 0)
+			return;
 
 		for (AirCourierTask.AirCourierTaskSnapshot snapshot : AirCourierTaskManager.getSnapshots(event.getServer())) {
 			UUID hudPlayerId = snapshot.hudTrackingPlayerId();
@@ -203,6 +205,16 @@ public final class AirCourierHudSync {
 
 		HUD_STATES.entrySet().removeIf(entry ->
 			event.getServer().getPlayerList().getPlayer(entry.getKey()) == null);
+	}
+
+	public static void clearPlayer(ServerPlayer player) {
+		HUD_STATES.remove(player.getUUID());
+		OBSERVED_THIS_CYCLE.entrySet().removeIf(entry -> entry.getKey().playerId.equals(player.getUUID()));
+	}
+
+	public static void clearAll() {
+		HUD_STATES.clear();
+		OBSERVED_THIS_CYCLE.clear();
 	}
 
 	private static void flushToPlayer(ServerPlayer player) {

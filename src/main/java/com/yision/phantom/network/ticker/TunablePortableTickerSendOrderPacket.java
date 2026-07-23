@@ -7,6 +7,7 @@ import com.simibubi.create.foundation.advancement.AllAdvancements;
 import com.simibubi.create.foundation.utility.AdventureUtil;
 import com.yision.phantom.item.ticker.access.ItemTunablePortableTickerAccess;
 import com.yision.phantom.item.ticker.access.TunablePortableTickerLocator;
+import com.yision.phantom.item.ticker.TunablePortableTickerSession;
 import com.yision.phantom.network.AllPackets;
 import java.util.UUID;
 import net.createmod.catnip.net.base.ServerboundPacketPayload;
@@ -23,7 +24,8 @@ public class TunablePortableTickerSendOrderPacket implements ServerboundPacketPa
 			ByteBufCodecs.VAR_INT, packet -> packet.channel,
 			UUIDUtil.STREAM_CODEC, packet -> packet.sessionNetwork,
 			PackageOrderWithCrafts.STREAM_CODEC, packet -> packet.order,
-			ByteBufCodecs.STRING_UTF8, packet -> packet.address, TunablePortableTickerSendOrderPacket::new);
+			ByteBufCodecs.stringUtf8(TunablePortableTickerSession.MAX_ADDRESS_LENGTH),
+			packet -> packet.address, TunablePortableTickerSendOrderPacket::new);
 
 	private final TunablePortableTickerLocator locator;
 	private final int channel;
@@ -41,20 +43,25 @@ public class TunablePortableTickerSendOrderPacket implements ServerboundPacketPa
 	}
 
 	protected void applySettings(ServerPlayer player) {
-		ItemTunablePortableTickerAccess access = ItemTunablePortableTickerAccess.resolve(player, locator, channel, sessionNetwork);
-		if (!access.isAvailable()) {
+		ItemTunablePortableTickerAccess access =
+			TunablePortableTickerSession.resolve(player, locator, channel, sessionNetwork);
+		if (access == null) {
 			return;
 		}
 
-		access.saveAddress(address);
+		String sanitizedAddress = TunablePortableTickerSession.sanitizeAddress(address);
+		access.saveAddress(sanitizedAddress);
 		if (order.isEmpty())
 			return;
+		if (!TunablePortableTickerSession.isOrderWithinBounds(order)) {
+			return;
+		}
 
 		AllSoundEvents.STOCK_TICKER_REQUEST.playOnServer(player.level(), player.blockPosition());
 		AllAdvancements.STOCK_TICKER.awardTo(player);
 		WiFiEffectPacket.send(player.level(), player.blockPosition());
 
-		access.submitOrder(order, address, player);
+		access.submitOrder(order, sanitizedAddress, player);
 	}
 
 	@Override

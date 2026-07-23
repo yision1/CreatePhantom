@@ -712,8 +712,8 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 				setActiveChannel(clickedChannel, true);
 				itemsToOrder = new ArrayList<>();
 				recipesToOrder = new ArrayList<>();
-				ClientScreenStorage.manualUpdate(menu.locator, activeChannel, activeSessionNetwork);
 				CatnipServices.NETWORK.sendToServer(new TunablePortableTickerSelectChannelPacket(menu.locator, activeChannel));
+				ClientScreenStorage.manualUpdate(menu.locator, activeChannel, activeSessionNetwork);
 			}
 			if (clickedChannel != -1)
 				return true;
@@ -1722,6 +1722,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 	@Override
 	public void removed() {
 		sendHiddenCategories();
+		ClientScreenStorage.close();
 		super.removed();
 	}
 

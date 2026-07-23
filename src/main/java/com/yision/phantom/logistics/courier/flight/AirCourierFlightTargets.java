@@ -1,6 +1,7 @@
 package com.yision.phantom.logistics.courier.flight;
 
 import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
@@ -13,7 +14,7 @@ public final class AirCourierFlightTargets {
 	public static Vec3 cruiseTarget(AirCourierFlightProfile profile,
 		@Nullable PhantomPortBlockEntity phantomPort, @Nullable ServerPlayer player) {
 		if (phantomPort != null) {
-			return Vec3.atCenterOf(phantomPort.getBlockPos()).add(0, profile.phantomPortCruiseHeight(), 0);
+			return cruiseTarget(profile, phantomPort.getBlockPos());
 		}
 		if (player != null) {
 			return playerDeliveryTarget(profile, player).add(0, profile.playerCruiseHeight() - profile.playerTargetHeight(), 0);
@@ -21,15 +22,23 @@ public final class AirCourierFlightTargets {
 		return Vec3.ZERO;
 	}
 
+	public static Vec3 cruiseTarget(AirCourierFlightProfile profile, BlockPos phantomPortPos) {
+		return Vec3.atCenterOf(phantomPortPos).add(0, profile.phantomPortCruiseHeight(), 0);
+	}
+
 	public static Vec3 landingTarget(AirCourierFlightProfile profile,
 		@Nullable PhantomPortBlockEntity phantomPort, @Nullable ServerPlayer player) {
 		if (phantomPort != null) {
-			return Vec3.atCenterOf(phantomPort.getBlockPos()).add(0, profile.phantomPortLandingHeight(), 0);
+			return landingTarget(profile, phantomPort.getBlockPos());
 		}
 		if (player != null) {
 			return playerDeliveryTarget(profile, player);
 		}
 		return Vec3.ZERO;
+	}
+
+	public static Vec3 landingTarget(AirCourierFlightProfile profile, BlockPos phantomPortPos) {
+		return Vec3.atCenterOf(phantomPortPos).add(0, profile.phantomPortLandingHeight(), 0);
 	}
 
 	public static double completionDistance(AirCourierFlightProfile profile,

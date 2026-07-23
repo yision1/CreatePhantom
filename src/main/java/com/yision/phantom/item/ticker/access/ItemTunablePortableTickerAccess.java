@@ -1,10 +1,14 @@
 package com.yision.phantom.item.ticker.access;
 
+import com.simibubi.create.Create;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour.RequestType;
 import com.simibubi.create.content.logistics.packagerLink.LogisticsManager;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
 import com.yision.phantom.item.ticker.TunablePortableTickerItem;
+import com.yision.phantom.item.ticker.TunablePortableTickerSession;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -42,7 +46,8 @@ public final class ItemTunablePortableTickerAccess implements TunablePortableTic
 
 	@Override
 	public boolean isAvailable() {
-		return network != null && network.equals(expectedNetwork);
+		return network != null && network.equals(expectedNetwork)
+			&& Create.LOGISTICS.mayInteract(network, player);
 	}
 
 	@Override
@@ -75,19 +80,31 @@ public final class ItemTunablePortableTickerAccess implements TunablePortableTic
 	@Override
 	public void saveAddress(String address) {
 		if (isAvailable())
-			TunablePortableTickerItem.saveAddress(stack, network, address);
+			TunablePortableTickerItem.saveAddress(stack, network,
+				TunablePortableTickerSession.sanitizeAddress(address));
 	}
 
 	@Override
 	public void saveHiddenCategories(UUID playerId, List<Integer> hiddenCategories) {
 		if (!isAvailable())
 			return;
-		TunablePortableTickerItem.saveHiddenCategories(stack, playerId, network, hiddenCategories);
+		int categoryCount = categories().size();
+		List<Integer> sanitized = new ArrayList<>();
+		for (int index : new LinkedHashSet<>(hiddenCategories)) {
+			if (index < 0 || index >= categoryCount) {
+				continue;
+			}
+			sanitized.add(index);
+			if (sanitized.size() >= TunablePortableTickerSession.MAX_HIDDEN_CATEGORIES) {
+				break;
+			}
+		}
+		TunablePortableTickerItem.saveHiddenCategories(stack, playerId, network, sanitized);
 	}
 
 	@Override
-	public InventorySummary fetchAccurateSummary() {
-		return isAvailable() ? LogisticsManager.getSummaryOfNetwork(network, true) : new InventorySummary();
+	public InventorySummary fetchSummary() {
+		return isAvailable() ? LogisticsManager.getSummaryOfNetwork(network, false) : new InventorySummary();
 	}
 
 	@Override

@@ -68,10 +68,20 @@ public final class AirCourierDispatchService {
 
 	private static boolean canReceivePhantomPortTarget(ServerLevel level, TargetLocation target, ItemStack box) {
 		ServerLevel targetLevel = level.getServer().getLevel(target.dimension());
-		if (targetLevel == null) {
+		if (targetLevel == null || !targetLevel.isPositionEntityTicking(target.pos())) {
 			return false;
 		}
 		BlockEntity blockEntity = targetLevel.getBlockEntity(target.pos());
 		return blockEntity instanceof PhantomPortBlockEntity phantomPort && phantomPort.canReceiveCourier(box);
+	}
+
+	public static boolean canReceiveCarrierTarget(ServerLevel level,
+		ResourceKey<Level> targetDimension, BlockPos targetPos) {
+		ServerLevel targetLevel = level.getServer().getLevel(targetDimension);
+		if (targetLevel == null || !targetLevel.isPositionEntityTicking(targetPos)) {
+			return false;
+		}
+		return targetLevel.getBlockEntity(targetPos) instanceof PhantomPortBlockEntity phantomPort
+			&& phantomPort.canReceiveCarrier();
 	}
 }

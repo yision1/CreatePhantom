@@ -102,11 +102,12 @@ public class MiniPhantomItem extends Item {
 	}
 
 	protected static void openMenu(ServerPlayer serverPlayer, ItemStack stack, InteractionHand usedHand) {
+		ItemStack openedSnapshot = stack.copy();
 		serverPlayer.openMenu(
 			new SimpleMenuProvider((id, inv, p) -> MiniPhantomMenu.create(id, inv, stack, usedHand),
 				Component.translatable("item.createphantom.mini_phantom")),
 			buffer -> {
-				ItemStack.STREAM_CODEC.encode(buffer, stack);
+				ItemStack.STREAM_CODEC.encode(buffer, openedSnapshot);
 				buffer.writeEnum(usedHand);
 				ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer,
 					serverPlayer.getData(AllAttachmentTypes.MINI_PHANTOM_CLIPBOARD).getStackInSlot(0));

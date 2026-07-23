@@ -1,5 +1,6 @@
 package com.yision.phantom.logistics.courier;
 
+import com.yision.phantom.CreatePhantom;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -28,6 +29,7 @@ public class AirCourierTaskSavedData extends SavedData {
 				AirCourierTask task = AirCourierTask.load(registries, taskTag);
 				data.tasks.add(task);
 			} catch (Exception e) {
+				CreatePhantom.LOGGER.warn("Skipping malformed courier task at saved-data index {}", i, e);
 			}
 		}
 		return data;

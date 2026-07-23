@@ -213,6 +213,10 @@ public class TunablePortableTickerItem extends Item {
 
 		TunablePortableTickerLocator locator = TunablePortableTickerLocator.fromHand(usedHand);
 		if (player instanceof ServerPlayer serverPlayer) {
+			if (!TunablePortableTickerSession.mayInteract(serverPlayer, network)) {
+				player.displayClientMessage(Component.translatable("create.stock_keeper.locked"), true);
+				return InteractionResultHolder.success(stack);
+			}
 			int finalChannel = channel;
 			serverPlayer.openMenu(new SimpleMenuProvider(
 				(id, inv, p) -> new TunablePortableTickerMenu(id, inv, locator, finalChannel),
@@ -224,11 +228,12 @@ public class TunablePortableTickerItem extends Item {
 	}
 
 	private void openCardConfigMenu(ServerPlayer player, ItemStack stack, TunablePortableTickerLocator locator) {
+		ItemStack openedSnapshot = stack.copy();
 		player.openMenu(new SimpleMenuProvider(
 			(id, inv, p) -> TunablePortableTickerCardMenu.create(id, inv, stack, locator),
 			Component.translatable("gui.createphantom.tunable_portable_ticker.cards")),
 			buffer -> {
-				ItemStack.STREAM_CODEC.encode(buffer, stack);
+				ItemStack.STREAM_CODEC.encode(buffer, openedSnapshot);
 				TunablePortableTickerLocator.STREAM_CODEC.encode(buffer, locator);
 			});
 	}

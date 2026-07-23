@@ -134,6 +134,9 @@ final class PhantomPortAutomation {
 			return null;
 		}
 		BlockPos adjacentPos = port.getBlockPos().relative(side);
+		if (!port.getLevel().hasChunkAt(adjacentPos)) {
+			return null;
+		}
 		if (!(port.getLevel().getBlockEntity(adjacentPos) instanceof PackagerBlockEntity)) {
 			return null;
 		}

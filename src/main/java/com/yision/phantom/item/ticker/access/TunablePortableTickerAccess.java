@@ -25,7 +25,7 @@ public interface TunablePortableTickerAccess {
 
 	void saveHiddenCategories(UUID playerId, List<Integer> hiddenCategories);
 
-	InventorySummary fetchAccurateSummary();
+	InventorySummary fetchSummary();
 
 	boolean submitOrder(PackageOrderWithCrafts order, String address, ServerPlayer player);
 }

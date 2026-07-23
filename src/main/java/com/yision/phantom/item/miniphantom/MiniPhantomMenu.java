@@ -6,8 +6,6 @@ import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.registry.AllAttachmentTypes;
 import com.yision.phantom.registry.AllItems;
 import com.yision.phantom.registry.AllMenuTypes;
-import java.util.ArrayList;
-import java.util.List;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -36,7 +34,9 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 	private final PlayerMiniPhantomClipboardInventory clipboardInventory;
 	private final int ownerHotbarSlot;
 	private final int ownerMenuSlot;
-	private final List<ItemStack> initialPackageContents;
+	private final boolean serverTransaction;
+	private final boolean openedWithCargo;
+	private final ItemStack initialCargoPackage;
 
 	public final Player player;
 	public final Inventory playerInventory;
@@ -55,8 +55,10 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 		this.clipboardInventory = new PlayerMiniPhantomClipboardInventory();
 		this.clipboardInventory.setStackInSlot(0, ItemStack.OPTIONAL_STREAM_CODEC.decode(extraData));
 		this.clipboardInventory.setAddress(extraData.readUtf());
+		this.serverTransaction = false;
+		this.openedWithCargo = MiniPhantomItem.hasCargo(openedStack);
+		this.initialCargoPackage = MiniPhantomItem.copyCargoPackage(openedStack);
 		this.initialAddress = readInitialContents(openedStack, clipboardInventory.getAddress());
-		this.initialPackageContents = snapshotPackageInventory();
 		this.ownerHotbarSlot = hand == InteractionHand.MAIN_HAND ? playerInventory.selected : -1;
 		this.ownerMenuSlot = ownerHotbarSlot >= 0 ? PLAYER_SLOT_START + 27 + ownerHotbarSlot : -1;
 		addSlots();
@@ -69,8 +71,21 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 		this.openedStack = openedStack.copy();
 		this.hand = hand;
 		this.clipboardInventory = player.getData(AllAttachmentTypes.MINI_PHANTOM_CLIPBOARD);
+		this.serverTransaction = true;
+		this.openedWithCargo = MiniPhantomItem.hasCargo(openedStack);
+		this.initialCargoPackage = MiniPhantomItem.copyCargoPackage(openedStack);
 		this.initialAddress = readInitialContents(this.openedStack, clipboardInventory.getAddress());
-		this.initialPackageContents = snapshotPackageInventory();
+		if (openedWithCargo) {
+			ItemStack untouchedRemainder = ItemStack.EMPTY;
+			if (openedStack.getCount() > 1) {
+				untouchedRemainder = openedStack.copy();
+				untouchedRemainder.setCount(openedStack.getCount() - 1);
+				openedStack.setCount(1);
+			}
+			MiniPhantomItem.clearCargo(openedStack);
+			if (!untouchedRemainder.isEmpty())
+				playerInventory.placeItemBackInInventory(untouchedRemainder);
+		}
 		this.ownerHotbarSlot = hand == InteractionHand.MAIN_HAND ? playerInventory.selected : -1;
 		this.ownerMenuSlot = ownerHotbarSlot >= 0 ? PLAYER_SLOT_START + 27 + ownerHotbarSlot : -1;
 		addSlots();
@@ -150,12 +165,11 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 		}
 
 		String normalizedAddress = address == null ? "" : address.trim();
+		if (normalizedAddress.length() > 64)
+			normalizedAddress = normalizedAddress.substring(0, 64);
 		player.getData(AllAttachmentTypes.MINI_PHANTOM_CLIPBOARD).setAddress(normalizedAddress);
 		ItemStack packageBox = createPackageBox();
 		if (packageBox.isEmpty()) {
-			if (MiniPhantomItem.hasCargo(openedStack)) {
-				player.setItemInHand(hand, AllItems.MINI_PHANTOM.asStack());
-			}
 			clearPackageInventory();
 			confirmed = true;
 			broadcastChanges();
@@ -166,20 +180,18 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 			PackageItem.addAddress(packageBox, normalizedAddress);
 		}
 
-		ItemStack loadedPhantom = MiniPhantomItem.createLoaded(packageBox);
-		if (MiniPhantomItem.hasCargo(openedStack)) {
-			player.setItemInHand(hand, loadedPhantom);
+		ItemStack heldStack = player.getItemInHand(hand);
+		if (!heldStack.is(AllItems.MINI_PHANTOM.get()) || heldStack.isEmpty()) {
+			return false;
+		}
+		if (openedWithCargo || heldStack.getCount() == 1) {
+			MiniPhantomItem.loadCargo(heldStack, packageBox);
 		} else {
-			ItemStack heldStack = player.getItemInHand(hand);
-			if (!heldStack.is(AllItems.MINI_PHANTOM.get()) || heldStack.isEmpty()) {
-				return false;
-			}
-			if (heldStack.getCount() == 1) {
-				player.setItemInHand(hand, loadedPhantom);
-			} else {
-				heldStack.shrink(1);
-				player.getInventory().placeItemBackInInventory(loadedPhantom);
-			}
+			ItemStack loadedPhantom = heldStack.copy();
+			loadedPhantom.setCount(1);
+			MiniPhantomItem.loadCargo(loadedPhantom, packageBox);
+			heldStack.shrink(1);
+			player.getInventory().placeItemBackInInventory(loadedPhantom);
 		}
 		clearPackageInventory();
 		confirmed = true;
@@ -201,104 +213,58 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 		return hasAnyContents ? PackageItem.containing(handler) : ItemStack.EMPTY;
 	}
 
-	private void clearPackageInventory() {
-		for (int slot = 0; slot < packageInventory.getSlots(); slot++) {
-			packageInventory.setStackInSlot(slot, ItemStack.EMPTY);
-		}
-	}
-
 	@Override
 	public void removed(Player player) {
 		super.removed(player);
-		if (player.level().isClientSide || confirmed) {
+		if (player.level().isClientSide || confirmed || !serverTransaction) {
 			return;
 		}
-		if (MiniPhantomItem.hasCargo(openedStack)) {
-			cancelPackagedPhantomChanges(player);
-			return;
-		}
-		for (int slot = 0; slot < packageInventory.getSlots(); slot++) {
-			player.getInventory().placeItemBackInInventory(packageInventory.getStackInSlot(slot));
-			packageInventory.setStackInSlot(slot, ItemStack.EMPTY);
-		}
+		closeTransaction(player);
 	}
 
-	private void cancelPackagedPhantomChanges(Player player) {
-		List<ItemStack> currentContents = snapshotPackageInventory();
-		List<ItemStack> insertedContents = subtractStacks(currentContents, initialPackageContents);
-		List<ItemStack> removedContents = subtractStacks(initialPackageContents, currentContents);
-		if (insertedContents.isEmpty() && removedContents.isEmpty()) {
-			clearPackageInventory();
-			return;
-		}
-
-		for (ItemStack stack : insertedContents) {
-			player.getInventory().placeItemBackInInventory(stack);
-		}
-		for (ItemStack stack : removedContents) {
-			consumeFromPlayerInventory(player, stack);
-		}
-		clearPackageInventory();
-	}
-
-	private List<ItemStack> snapshotPackageInventory() {
-		List<ItemStack> snapshot = new ArrayList<>();
-		for (int slot = 0; slot < packageInventory.getSlots(); slot++) {
-			ItemStack stack = packageInventory.getStackInSlot(slot);
-			if (!stack.isEmpty()) {
-				snapshot.add(stack.copy());
-			}
-		}
-		return snapshot;
-	}
-
-	private static List<ItemStack> subtractStacks(List<ItemStack> source, List<ItemStack> toSubtract) {
-		List<ItemStack> remainder = new ArrayList<>(source.size());
-		for (ItemStack stack : source) {
-			if (!stack.isEmpty()) {
-				remainder.add(stack.copy());
-			}
-		}
-		for (ItemStack subtract : toSubtract) {
-			if (subtract.isEmpty()) {
-				continue;
-			}
-			int remainingCount = subtract.getCount();
-			for (ItemStack candidate : remainder) {
-				if (remainingCount <= 0) {
-					break;
+	private void closeTransaction(Player player) {
+		if (openedWithCargo) {
+			ItemStack heldStack = player.getItemInHand(hand);
+			if (heldStack.is(AllItems.MINI_PHANTOM.get()) && !heldStack.isEmpty()) {
+				boolean unchanged = contentsMatchInitialPackage();
+				ItemStack packageBox = unchanged ? initialCargoPackage.copy() : createPackageBox();
+				if (!packageBox.isEmpty()) {
+					if (!unchanged && !initialAddress.isBlank())
+						PackageItem.addAddress(packageBox, initialAddress);
+					MiniPhantomItem.loadCargo(heldStack, packageBox);
 				}
-				if (!ItemStack.isSameItemSameComponents(candidate, subtract)) {
-					continue;
-				}
-				int consumed = Math.min(remainingCount, candidate.getCount());
-				candidate.shrink(consumed);
-				remainingCount -= consumed;
-			}
-		}
-
-		List<ItemStack> difference = new ArrayList<>();
-		for (ItemStack stack : remainder) {
-			if (!stack.isEmpty()) {
-				difference.add(stack);
-			}
-		}
-		return difference;
-	}
-
-	private static void consumeFromPlayerInventory(Player player, ItemStack targetStack) {
-		int remainingCount = targetStack.getCount();
-		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
-			if (remainingCount <= 0) {
+				clearPackageInventory();
 				return;
 			}
-			ItemStack inventoryStack = player.getInventory().getItem(slot);
-			if (!ItemStack.isSameItemSameComponents(inventoryStack, targetStack)) {
-				continue;
+		}
+		returnPackageContents(player);
+	}
+
+	private boolean contentsMatchInitialPackage() {
+		if (!PackageItem.isPackage(initialCargoPackage))
+			return false;
+		ItemStackHandler initialContents = PackageItem.getContents(initialCargoPackage);
+		for (int slot = 0; slot < packageInventory.getSlots(); slot++) {
+			if (!ItemStack.matches(
+				packageInventory.getStackInSlot(slot), initialContents.getStackInSlot(slot))) {
+				return false;
 			}
-			int consumed = Math.min(remainingCount, inventoryStack.getCount());
-			inventoryStack.shrink(consumed);
-			remainingCount -= consumed;
+		}
+		return true;
+	}
+
+	private void returnPackageContents(Player player) {
+		for (int slot = 0; slot < packageInventory.getSlots(); slot++) {
+			ItemStack stack = packageInventory.extractItem(slot, packageInventory.getSlotLimit(slot), false);
+			if (!stack.isEmpty())
+				player.getInventory().placeItemBackInInventory(stack);
+		}
+	}
+
+	private void clearPackageInventory() {
+		for (int slot = 0; slot < packageInventory.getSlots(); slot++) {
+			if (!packageInventory.getStackInSlot(slot).isEmpty())
+				packageInventory.setStackInSlot(slot, ItemStack.EMPTY);
 		}
 	}
 
@@ -317,6 +283,8 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 	}
 
 	private boolean isOwnerInteraction(int slotId, int dragType, ClickType clickType) {
+		if (clickType == ClickType.SWAP && hand == InteractionHand.OFF_HAND && dragType == 40)
+			return true;
 		if (ownerMenuSlot < 0) {
 			return false;
 		}
@@ -328,11 +296,14 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 
 	@Override
 	public boolean canTakeItemForPickAll(ItemStack stack, Slot slot) {
-		return super.canTakeItemForPickAll(stack, slot) && slot.index != ownerHotbarSlot;
+		return super.canTakeItemForPickAll(stack, slot)
+			&& !(slot.container == playerInventory && slot.getSlotIndex() == ownerHotbarSlot);
 	}
 
 	@Override
 	public @NotNull ItemStack quickMoveStack(Player player, int index) {
+		if (index < 0 || index >= slots.size())
+			return ItemStack.EMPTY;
 		Slot slot = slots.get(index);
 		if (!slot.hasItem()) {
 			return ItemStack.EMPTY;

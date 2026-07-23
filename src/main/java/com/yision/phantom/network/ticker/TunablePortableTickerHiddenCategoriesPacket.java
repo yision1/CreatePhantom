@@ -2,6 +2,7 @@ package com.yision.phantom.network.ticker;
 
 import com.yision.phantom.item.ticker.access.ItemTunablePortableTickerAccess;
 import com.yision.phantom.item.ticker.access.TunablePortableTickerLocator;
+import com.yision.phantom.item.ticker.TunablePortableTickerSession;
 import com.yision.phantom.network.AllPackets;
 import java.util.List;
 import java.util.UUID;
@@ -24,8 +25,11 @@ public record TunablePortableTickerHiddenCategoriesPacket(TunablePortableTickerL
 
 	@Override
 	public void handle(ServerPlayer player) {
-		ItemTunablePortableTickerAccess access = ItemTunablePortableTickerAccess.resolve(player, locator, channel, sessionNetwork);
-		access.saveHiddenCategories(player.getUUID(), indices);
+		ItemTunablePortableTickerAccess access =
+			TunablePortableTickerSession.resolve(player, locator, channel, sessionNetwork);
+		if (access != null) {
+			access.saveHiddenCategories(player.getUUID(), indices);
+		}
 	}
 
 	@Override

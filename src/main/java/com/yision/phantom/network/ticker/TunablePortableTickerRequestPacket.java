@@ -4,6 +4,7 @@ import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.yision.phantom.item.ticker.access.ItemTunablePortableTickerAccess;
 import com.yision.phantom.item.ticker.access.TunablePortableTickerLocator;
+import com.yision.phantom.item.ticker.TunablePortableTickerSession;
 import com.yision.phantom.network.AllPackets;
 import java.util.List;
 import java.util.UUID;
@@ -31,9 +32,16 @@ public record TunablePortableTickerRequestPacket(TunablePortableTickerLocator lo
 		if (player == null)
 			return;
 
-		ItemTunablePortableTickerAccess access = ItemTunablePortableTickerAccess.resolve(player, locator, channel, sessionNetwork);
-		InventorySummary summary = access.fetchAccurateSummary();
+		ItemTunablePortableTickerAccess access =
+			TunablePortableTickerSession.resolve(player, locator, channel, sessionNetwork);
+		if (access == null || !TunablePortableTickerSession.allowStockRequest(player, channel, sessionNetwork)) {
+			return;
+		}
+		InventorySummary summary = access.fetchSummary();
 		List<BigItemStack> allStacks = summary.getStacksByCount();
+		if (allStacks.size() > TunablePortableTickerSession.MAX_STOCK_RESPONSE_ENTRIES) {
+			allStacks = allStacks.subList(0, TunablePortableTickerSession.MAX_STOCK_RESPONSE_ENTRIES);
+		}
 		if (allStacks.isEmpty()) {
 			sendStockSnapshot(player, List.of(), true);
 			return;

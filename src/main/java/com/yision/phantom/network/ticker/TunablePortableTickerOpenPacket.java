@@ -4,6 +4,7 @@ import com.yision.phantom.item.ticker.TunablePortableTickerItem;
 import com.yision.phantom.item.ticker.access.TunablePortableTickerLocator;
 import com.yision.phantom.item.ticker.TunablePortableTickerCardMenu;
 import com.yision.phantom.item.ticker.TunablePortableTickerMenu;
+import com.yision.phantom.item.ticker.TunablePortableTickerSession;
 import com.yision.phantom.network.AllPackets;
 import java.util.OptionalInt;
 import java.util.UUID;
@@ -42,11 +43,12 @@ public record TunablePortableTickerOpenPacket(boolean cardConfig) implements Ser
 			return;
 
 		if (cardConfig) {
+			ItemStack openedSnapshot = stack.copy();
 			player.openMenu(new SimpleMenuProvider(
 				(id, inv, p) -> TunablePortableTickerCardMenu.create(id, inv, stack, locator),
 				Component.translatable("gui.createphantom.tunable_portable_ticker.cards")),
 				buffer -> {
-					ItemStack.STREAM_CODEC.encode(buffer, stack);
+					ItemStack.STREAM_CODEC.encode(buffer, openedSnapshot);
 					TunablePortableTickerLocator.STREAM_CODEC.encode(buffer, locator);
 				});
 			return;
@@ -66,6 +68,10 @@ public record TunablePortableTickerOpenPacket(boolean cardConfig) implements Ser
 		if (network == null) {
 			player.displayClientMessage(
 				Component.translatable("item.createphantom.tunable_portable_ticker.not_linked"), true);
+			return;
+		}
+		if (!TunablePortableTickerSession.mayInteract(player, network)) {
+			player.displayClientMessage(Component.translatable("create.stock_keeper.locked"), true);
 			return;
 		}
 

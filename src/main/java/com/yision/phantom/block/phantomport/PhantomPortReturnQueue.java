@@ -1,6 +1,7 @@
 package com.yision.phantom.block.phantomport;
 
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
+import com.yision.phantom.logistics.courier.AirCourierDispatchService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -25,6 +26,7 @@ final class PhantomPortReturnQueue {
 
 	static final int RETURN_RETRY_TICKS = 100;
 	static final int RETURN_LAUNCH_DELAY_TICKS = 40;
+	private static final int RETURN_RETRY_INTERVAL_TICKS = 20;
 
 	private final PhantomPortBlockEntity port;
 	private final PhantomPortInventory inventory;
@@ -52,10 +54,14 @@ final class PhantomPortReturnQueue {
 		if (task == null) {
 			return;
 		}
-		if (task.delayTicks() > 0) {
+		long gameTime = ((ServerLevel) port.getLevel()).getGameTime();
+		if (task.relativeTime()) {
 			pendingReturnCarriers.removeFirst();
-			pendingReturnCarriers.addFirst(task.withDelay(task.delayTicks() - 1));
+			task = task.resolveRelative(gameTime);
+			pendingReturnCarriers.addFirst(task);
 			port.setChanged();
+		}
+		if (gameTime < task.nextAttemptGameTime()) {
 			return;
 		}
 		if (task.isPlayerReturn()) {
@@ -71,8 +77,7 @@ final class PhantomPortReturnQueue {
 				return;
 			}
 		}
-		int remaining = task.retryTicks() - 1;
-		if (remaining <= 0) {
+		if (gameTime >= task.expiresAtGameTime()) {
 			pendingReturnCarriers.removeFirst();
 			if (task.isPlayerReturn()) {
 				inventory.dropOneCarrier();
@@ -81,13 +86,15 @@ final class PhantomPortReturnQueue {
 			return;
 		}
 		pendingReturnCarriers.removeFirst();
-		pendingReturnCarriers.addFirst(task.withRetry(remaining));
+		pendingReturnCarriers.addFirst(task.withNextAttempt(
+			Math.min(gameTime + RETURN_RETRY_INTERVAL_TICKS, task.expiresAtGameTime())));
 		port.setChanged();
 	}
 
 	boolean tryQueueReturnCarrier(@Nullable ResourceKey<Level> returnDimension,
 								  @Nullable BlockPos returnPos) {
-		if (!(port.getLevel() instanceof ServerLevel) || returnDimension == null || returnPos == null) {
+		if (!(port.getLevel() instanceof ServerLevel serverLevel) || returnDimension == null || returnPos == null
+			|| !AirCourierDispatchService.canReceiveCarrierTarget(serverLevel, returnDimension, returnPos)) {
 			return false;
 		}
 		return beltAccess.tryInsertToLaunchBelt(MiniPhantomItem.returningTo(returnDimension, returnPos));
@@ -140,18 +147,23 @@ final class PhantomPortReturnQueue {
 
 	private void schedulePendingReturnCarrier(ResourceKey<Level> returnDimension, BlockPos returnPos, int delayTicks) {
 		pendingReturnCarriers.addLast(PendingReturnCarrier.toPhantomPort(
-			returnDimension, returnPos, Math.max(0, delayTicks), RETURN_RETRY_TICKS));
+			returnDimension, returnPos, currentGameTime(), Math.max(0, delayTicks), RETURN_RETRY_TICKS));
 		port.markPortContentsChanged();
 	}
 
 	private void schedulePendingReturnToPlayer(UUID playerId, int delayTicks) {
 		pendingReturnCarriers.addLast(PendingReturnCarrier.toPlayer(
-			playerId, Math.max(0, delayTicks), RETURN_RETRY_TICKS));
+			playerId, currentGameTime(), Math.max(0, delayTicks), RETURN_RETRY_TICKS));
 		port.markPortContentsChanged();
 	}
 
+	private long currentGameTime() {
+		return port.getLevel() == null ? 0 : port.getLevel().getGameTime();
+	}
+
 	private boolean tryQueueStoredReturnCarrier(@Nullable ResourceKey<Level> returnDimension, @Nullable BlockPos returnPos) {
-		if (!(port.getLevel() instanceof ServerLevel) || returnDimension == null || returnPos == null) {
+		if (!(port.getLevel() instanceof ServerLevel serverLevel) || returnDimension == null || returnPos == null
+			|| !AirCourierDispatchService.canReceiveCarrierTarget(serverLevel, returnDimension, returnPos)) {
 			return false;
 		}
 		if (!inventory.hasStoredCarrier()) {
@@ -237,8 +249,14 @@ final class PhantomPortReturnQueue {
 						entry.put("Pos", NbtUtils.writeBlockPos(task.pos()));
 					}
 				}
-				entry.putInt("DelayTicks", task.delayTicks());
-				entry.putInt("RetryTicks", task.retryTicks());
+				if (task.relativeTime()) {
+					entry.putInt("DelayTicks", (int) task.nextAttemptGameTime());
+					entry.putInt("RetryTicks",
+						(int) Math.max(0, task.expiresAtGameTime() - task.nextAttemptGameTime()));
+				} else {
+					entry.putLong("NextAttemptGameTime", task.nextAttemptGameTime());
+					entry.putLong("ExpiresAtGameTime", task.expiresAtGameTime());
+				}
 				list.add(entry);
 			}
 			tag.put("PendingReturnCarriers", list);
@@ -252,10 +270,16 @@ final class PhantomPortReturnQueue {
 			for (int i = 0; i < list.size(); i++) {
 				CompoundTag entry = list.getCompound(i);
 				String type = entry.getString("Type");
-				int delay = entry.contains("DelayTicks") ? entry.getInt("DelayTicks") : 0;
-				int retry = entry.contains("RetryTicks") ? entry.getInt("RetryTicks") : RETURN_RETRY_TICKS;
+				boolean absoluteTime = entry.contains("NextAttemptGameTime", Tag.TAG_LONG)
+					&& entry.contains("ExpiresAtGameTime", Tag.TAG_LONG);
+				long nextAttempt = absoluteTime ? entry.getLong("NextAttemptGameTime")
+					: Math.max(0, entry.getInt("DelayTicks"));
+				long expiresAt = absoluteTime ? entry.getLong("ExpiresAtGameTime")
+					: nextAttempt + (entry.contains("RetryTicks")
+						? Math.max(0, entry.getInt("RetryTicks")) : RETURN_RETRY_TICKS);
 				if ("player".equals(type) && entry.hasUUID("PlayerId")) {
-					pendingReturnCarriers.addLast(PendingReturnCarrier.toPlayer(entry.getUUID("PlayerId"), delay, retry));
+					pendingReturnCarriers.addLast(new PendingReturnCarrier(
+						null, null, entry.getUUID("PlayerId"), nextAttempt, expiresAt, !absoluteTime));
 				} else if ("phantom_port".equals(type)) {
 					ResourceKey<Level> dim = entry.contains("Dimension")
 						? ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(entry.getString("Dimension")))
@@ -264,7 +288,8 @@ final class PhantomPortReturnQueue {
 						? NbtUtils.readBlockPos(entry, "Pos").orElse(null)
 						: null;
 					if (dim != null && pos != null) {
-						pendingReturnCarriers.addLast(PendingReturnCarrier.toPhantomPort(dim, pos, delay, retry));
+						pendingReturnCarriers.addLast(new PendingReturnCarrier(
+							dim, pos.immutable(), null, nextAttempt, expiresAt, !absoluteTime));
 					}
 				}
 			}
@@ -275,23 +300,28 @@ final class PhantomPortReturnQueue {
 		@Nullable ResourceKey<Level> dimension,
 		@Nullable BlockPos pos,
 		@Nullable UUID playerId,
-		int delayTicks,
-		int retryTicks
+		long nextAttemptGameTime,
+		long expiresAtGameTime,
+		boolean relativeTime
 	) {
-		static PendingReturnCarrier toPhantomPort(ResourceKey<Level> dim, BlockPos p, int delay, int retry) {
-			return new PendingReturnCarrier(dim, p.immutable(), null, delay, retry);
+		static PendingReturnCarrier toPhantomPort(ResourceKey<Level> dim, BlockPos p, long now, int delay, int retry) {
+			long readyAt = now + delay;
+			return new PendingReturnCarrier(dim, p.immutable(), null, readyAt, readyAt + retry, false);
 		}
 
-		static PendingReturnCarrier toPlayer(UUID pid, int delay, int retry) {
-			return new PendingReturnCarrier(null, null, pid, delay, retry);
+		static PendingReturnCarrier toPlayer(UUID pid, long now, int delay, int retry) {
+			long readyAt = now + delay;
+			return new PendingReturnCarrier(null, null, pid, readyAt, readyAt + retry, false);
 		}
 
-		PendingReturnCarrier withDelay(int newDelay) {
-			return new PendingReturnCarrier(dimension, pos, playerId, newDelay, retryTicks);
+		PendingReturnCarrier withNextAttempt(long nextAttempt) {
+			return new PendingReturnCarrier(
+				dimension, pos, playerId, nextAttempt, expiresAtGameTime, false);
 		}
 
-		PendingReturnCarrier withRetry(int newRetry) {
-			return new PendingReturnCarrier(dimension, pos, playerId, delayTicks, newRetry);
+		PendingReturnCarrier resolveRelative(long now) {
+			return new PendingReturnCarrier(dimension, pos, playerId,
+				now + nextAttemptGameTime, now + expiresAtGameTime, false);
 		}
 
 		boolean isPlayerReturn() {

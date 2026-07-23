@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class AirCourierTaskManager {
+	private static final int SAVE_CHECKPOINT_TICKS = 20;
 
 	private static @Nullable AirCourierTaskSavedData savedData;
 	private static final Map<UUID, AirCourierEntity> visualEntities = new HashMap<>();
@@ -21,6 +22,7 @@ public final class AirCourierTaskManager {
 	private AirCourierTaskManager() {}
 
 	public static void onServerStarting(MinecraftServer server) {
+		clearRuntimeState();
 		savedData = AirCourierTaskSavedData.getOrCreate(server);
 	}
 
@@ -57,9 +59,16 @@ public final class AirCourierTaskManager {
 
 		if (!completed.isEmpty()) {
 			savedData.removeCompleted();
-		} else if (!tasks.isEmpty()) {
+		} else if (!tasks.isEmpty() && server.getTickCount() % SAVE_CHECKPOINT_TICKS == 0) {
 			savedData.markDirty();
 		}
+	}
+
+	public static void onServerStopping() {
+		if (savedData != null)
+			savedData.markDirty();
+		savedData = null;
+		clearRuntimeState();
 	}
 
 	public static void addTask(MinecraftServer server, AirCourierTask task) {
@@ -116,5 +125,13 @@ public final class AirCourierTaskManager {
 		entity.setDeltaMovement(task.motion());
 		entity.setPos(task.position());
 		entity.hurtMarked = true;
+	}
+
+	private static void clearRuntimeState() {
+		for (AirCourierEntity entity : visualEntities.values()) {
+			if (entity != null && entity.isAlive())
+				entity.discard();
+		}
+		visualEntities.clear();
 	}
 }

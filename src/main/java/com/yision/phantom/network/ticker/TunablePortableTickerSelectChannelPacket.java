@@ -1,6 +1,6 @@
 package com.yision.phantom.network.ticker;
 
-import com.yision.phantom.item.ticker.TunablePortableTickerItem;
+import com.yision.phantom.item.ticker.TunablePortableTickerMenu;
 import com.yision.phantom.item.ticker.access.TunablePortableTickerLocator;
 import com.yision.phantom.network.AllPackets;
 import net.createmod.catnip.net.base.ServerboundPacketPayload;
@@ -8,7 +8,6 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
 
 public record TunablePortableTickerSelectChannelPacket(TunablePortableTickerLocator locator, int channel)
 	implements ServerboundPacketPayload {
@@ -22,9 +21,8 @@ public record TunablePortableTickerSelectChannelPacket(TunablePortableTickerLoca
 	public void handle(ServerPlayer player) {
 		if (player == null)
 			return;
-		ItemStack stack = locator.resolve(player);
-		if (stack.getItem() instanceof TunablePortableTickerItem)
-			TunablePortableTickerItem.setSelectedChannel(stack, channel);
+		if (player.containerMenu instanceof TunablePortableTickerMenu menu && menu.locator.equals(locator))
+			menu.selectChannel(player, channel);
 	}
 
 	@Override

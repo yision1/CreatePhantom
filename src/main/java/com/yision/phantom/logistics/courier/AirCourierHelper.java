@@ -136,16 +136,6 @@ public final class AirCourierHelper {
 		return true;
 	}
 
-	public static TransportedItemStack createAlignedTransportedStack(ItemStack stack, Direction movementDirection) {
-		if (isCourierLaunchStack(stack)) {
-			MiniPhantomItem.setHeadingAngle(stack, getHeadingAngle(movementDirection));
-		}
-		TransportedItemStack transported = new TransportedItemStack(stack);
-		transported.angle = 180;
-		transported.sideOffset = transported.prevSideOffset = transported.getTargetSideOffset();
-		return transported;
-	}
-
 	public static boolean isCourierLaunchStack(ItemStack stack) {
 		return stack.is(AllItems.MINI_PHANTOM.get())
 			&& (MiniPhantomItem.hasCargo(stack)
@@ -209,7 +199,11 @@ public final class AirCourierHelper {
 		}
 		BlockPos beltPos = belt.getBlockPos();
 		for (Direction direction : Direction.Plane.HORIZONTAL) {
-			BlockEntity blockEntity = belt.getLevel().getBlockEntity(beltPos.above().relative(direction));
+			BlockPos candidatePos = beltPos.above().relative(direction);
+			if (!belt.getLevel().hasChunkAt(candidatePos)) {
+				continue;
+			}
+			BlockEntity blockEntity = belt.getLevel().getBlockEntity(candidatePos);
 			if (blockEntity instanceof PhantomPortBlockEntity phantomPortBlockEntity) {
 				return phantomPortBlockEntity.getBlockPos();
 			}

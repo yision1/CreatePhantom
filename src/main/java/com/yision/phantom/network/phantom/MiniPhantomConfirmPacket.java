@@ -10,7 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 public class MiniPhantomConfirmPacket implements ServerboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, MiniPhantomConfirmPacket> STREAM_CODEC = StreamCodec
-		.composite(ByteBufCodecs.STRING_UTF8, packet -> packet.address, MiniPhantomConfirmPacket::new);
+		.composite(ByteBufCodecs.stringUtf8(64), packet -> packet.address, MiniPhantomConfirmPacket::new);
 
 	private final String address;
 

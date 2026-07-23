@@ -10,6 +10,7 @@ import net.createmod.catnip.platform.CatnipServices;
 
 public final class ClientScreenStorage {
 	public static final int TICKS_BETWEEN_UPDATES = 100;
+	private static final int MAX_STOCK_ENTRIES = TunablePortableTickerSession.MAX_STOCK_RESPONSE_ENTRIES;
 
 	private static List<BigItemStack> stacks = List.of();
 	private static List<BigItemStack> collectionBuffer = new ArrayList<>();
@@ -50,11 +51,24 @@ public final class ClientScreenStorage {
 		if (!locator.equals(activeLocator) || channel != activeChannel
 			|| !java.util.Objects.equals(sessionNetwork, activeNetwork) || requestId != activeRequestId)
 			return;
-		collectionBuffer.addAll(chunks);
+		int remaining = MAX_STOCK_ENTRIES - collectionBuffer.size();
+		if (remaining > 0)
+			collectionBuffer.addAll(chunks.subList(0, Math.min(chunks.size(), remaining)));
 		if (!last)
 			return;
 		stacks = List.copyOf(collectionBuffer);
 		collectionBuffer = new ArrayList<>();
+		version++;
+	}
+
+	public static void close() {
+		stacks = List.of();
+		collectionBuffer = new ArrayList<>();
+		activeLocator = TunablePortableTickerLocator.EMPTY;
+		activeChannel = 0;
+		activeNetwork = null;
+		activeRequestId++;
+		ticks = 0;
 		version++;
 	}
 

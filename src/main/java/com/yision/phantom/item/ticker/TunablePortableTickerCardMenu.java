@@ -23,17 +23,22 @@ import org.jetbrains.annotations.NotNull;
 
 public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	private static final int PROXY_SLOT_COUNT = 1;
+	private static final int NO_ACTIVE_CARD = -2;
 
-	public boolean slotsActive = true;
+	public boolean slotsActive;
 	public final ItemStackHandler proxyInventory;
 	public final Player player;
 	public final Inventory playerInventory;
 	public final ItemStack openedStack;
 	public final TunablePortableTickerLocator locator;
 
+	private final ItemStackHandler workingCards;
 	private final List<ItemStack> initialCards;
 	private final int ownerInventorySlot;
 	private final int ownerMenuSlot;
+	private final boolean serverTransaction;
+	private int activeCardIndex = NO_ACTIVE_CARD;
+	private boolean closed;
 
 	public TunablePortableTickerCardMenu(MenuType<?> type, int id, Inventory playerInventory,
 		RegistryFriendlyByteBuf extraData) {
@@ -42,8 +47,10 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 		this.playerInventory = playerInventory;
 		this.openedStack = ItemStack.STREAM_CODEC.decode(extraData);
 		this.locator = TunablePortableTickerLocator.STREAM_CODEC.decode(extraData);
-		this.proxyInventory = new ItemStackHandler(PROXY_SLOT_COUNT);
+		this.proxyInventory = createProxyInventory();
+		this.workingCards = new ItemStackHandler(TunablePortableTickerItem.MAX_CHANNELS);
 		this.initialCards = readCards(openedStack);
+		this.serverTransaction = false;
 		this.ownerInventorySlot = computeOwnerInventorySlot();
 		this.ownerMenuSlot = ownerInventorySlot >= 0 ? menuSlotForPlayerInventorySlot(ownerInventorySlot) : -1;
 		addSlots();
@@ -56,8 +63,13 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 		this.playerInventory = playerInventory;
 		this.openedStack = openedStack.copy();
 		this.locator = locator;
-		this.proxyInventory = new ItemStackHandler(PROXY_SLOT_COUNT);
+		this.proxyInventory = createProxyInventory();
+		this.workingCards = new ItemStackHandler(TunablePortableTickerItem.MAX_CHANNELS);
 		this.initialCards = readCards(openedStack);
+		this.serverTransaction = true;
+		for (int i = 0; i < initialCards.size(); i++)
+			workingCards.setStackInSlot(i, initialCards.get(i));
+		TunablePortableTickerItem.setCards(openedStack, List.of());
 		this.ownerInventorySlot = computeOwnerInventorySlot();
 		this.ownerMenuSlot = ownerInventorySlot >= 0 ? menuSlotForPlayerInventorySlot(ownerInventorySlot) : -1;
 		addSlots();
@@ -67,6 +79,20 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 		ItemStack openedStack, TunablePortableTickerLocator locator) {
 		return new TunablePortableTickerCardMenu(AllMenuTypes.TUNABLE_PORTABLE_TICKER_CARDS.get(), id,
 			playerInventory, openedStack, locator);
+	}
+
+	private static ItemStackHandler createProxyInventory() {
+		return new ItemStackHandler(PROXY_SLOT_COUNT) {
+			@Override
+			public int getSlotLimit(int slot) {
+				return 1;
+			}
+
+			@Override
+			public boolean isItemValid(int slot, ItemStack stack) {
+				return stack.getItem() instanceof StorageChannelExtensionCardItem;
+			}
+		};
 	}
 
 	private static List<ItemStack> readCards(ItemStack openedStack) {
@@ -85,26 +111,140 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 		return cards;
 	}
 
-	public void applyCards(List<ItemStack> cards) {
-		ItemStack liveStack = locator.resolve(player);
-		if (!(liveStack.getItem() instanceof TunablePortableTickerItem))
+	public void beginEdit(int cardIndex) {
+		if (!serverTransaction || activeCardIndex != NO_ACTIVE_CARD || !proxyInventory.getStackInSlot(0).isEmpty())
+			return;
+		int cardCount = cardCount();
+		if (cardIndex < -1 || cardIndex >= cardCount)
+			return;
+		if (cardIndex == -1 && cardCount >= TunablePortableTickerItem.MAX_CHANNELS)
 			return;
 
-		TunablePortableTickerItem.setCards(liveStack, sanitizeCards(cards));
+		if (cardIndex >= 0) {
+			ItemStack card = workingCards.extractItem(cardIndex, 1, false);
+			if (card.isEmpty())
+				return;
+			proxyInventory.setStackInSlot(0, card);
+		}
+		activeCardIndex = cardIndex;
+		slotsActive = true;
+		broadcastChanges();
 	}
 
-	public static List<ItemStack> sanitizeCards(List<ItemStack> cards) {
-		List<ItemStack> sanitized = new ArrayList<>();
-		for (ItemStack card : cards) {
-			if (sanitized.size() >= TunablePortableTickerItem.MAX_CHANNELS)
-				break;
-			if (card.isEmpty() || !(card.getItem() instanceof StorageChannelExtensionCardItem))
-				continue;
-			ItemStack copy = card.copy();
-			copy.setCount(1);
-			sanitized.add(copy);
+	public void finishEdit(int cardIndex, String name) {
+		if (!serverTransaction || activeCardIndex == NO_ACTIVE_CARD || activeCardIndex != cardIndex)
+			return;
+
+		ItemStack card = proxyInventory.extractItem(0, 1, false);
+		if (!card.isEmpty() && card.getItem() instanceof StorageChannelExtensionCardItem) {
+			String sanitizedName = name == null ? "" : name.trim();
+			if (sanitizedName.length() > 28)
+				sanitizedName = sanitizedName.substring(0, 28);
+			card.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+				sanitizedName.isBlank() ? null : net.minecraft.network.chat.Component.literal(sanitizedName));
+			int destination = activeCardIndex == -1 ? firstEmptyWorkingSlot() : activeCardIndex;
+			if (destination >= 0)
+				workingCards.setStackInSlot(destination, card);
+			else
+				playerInventory.placeItemBackInInventory(card);
+		} else if (!card.isEmpty()) {
+			playerInventory.placeItemBackInInventory(card);
 		}
-		return sanitized;
+
+		activeCardIndex = NO_ACTIVE_CARD;
+		compactWorkingCards();
+		slotsActive = false;
+		broadcastChanges();
+	}
+
+	public void removeCard(int cardIndex) {
+		if (!serverTransaction || activeCardIndex != NO_ACTIVE_CARD
+			|| cardIndex < 0 || cardIndex >= cardCount())
+			return;
+		ItemStack removed = workingCards.extractItem(cardIndex, 1, false);
+		if (!removed.isEmpty())
+			playerInventory.placeItemBackInInventory(removed);
+		compactWorkingCards();
+		broadcastChanges();
+	}
+
+	public void moveCard(int fromIndex, int toIndex) {
+		if (!serverTransaction || activeCardIndex != NO_ACTIVE_CARD)
+			return;
+		List<ItemStack> cards = drainWorkingCards();
+		if (fromIndex < 0 || fromIndex >= cards.size() || toIndex < 0 || toIndex >= cards.size()) {
+			restoreWorkingCards(cards);
+			return;
+		}
+		ItemStack moved = cards.remove(fromIndex);
+		cards.add(toIndex, moved);
+		restoreWorkingCards(cards);
+	}
+
+	private int cardCount() {
+		int count = 0;
+		for (int i = 0; i < workingCards.getSlots(); i++)
+			if (!workingCards.getStackInSlot(i).isEmpty())
+				count++;
+		return count;
+	}
+
+	private int firstEmptyWorkingSlot() {
+		for (int i = 0; i < workingCards.getSlots(); i++)
+			if (workingCards.getStackInSlot(i).isEmpty())
+				return i;
+		return -1;
+	}
+
+	private void compactWorkingCards() {
+		restoreWorkingCards(drainWorkingCards());
+	}
+
+	private List<ItemStack> drainWorkingCards() {
+		List<ItemStack> cards = new ArrayList<>();
+		for (int i = 0; i < workingCards.getSlots(); i++) {
+			ItemStack card = workingCards.extractItem(i, 1, false);
+			if (!card.isEmpty())
+				cards.add(card);
+		}
+		return cards;
+	}
+
+	private void restoreWorkingCards(List<ItemStack> cards) {
+		for (int i = 0; i < workingCards.getSlots(); i++)
+			workingCards.setStackInSlot(i, ItemStack.EMPTY);
+		for (int i = 0; i < Math.min(cards.size(), workingCards.getSlots()); i++)
+			workingCards.setStackInSlot(i, cards.get(i));
+	}
+
+	private void closeTransaction() {
+		if (!serverTransaction || closed)
+			return;
+		closed = true;
+
+		if (activeCardIndex != NO_ACTIVE_CARD) {
+			ItemStack card = proxyInventory.extractItem(0, 1, false);
+			if (!card.isEmpty() && card.getItem() instanceof StorageChannelExtensionCardItem) {
+				int destination = activeCardIndex == -1 ? firstEmptyWorkingSlot() : activeCardIndex;
+				if (destination >= 0)
+					workingCards.setStackInSlot(destination, card);
+				else
+					playerInventory.placeItemBackInInventory(card);
+			} else if (!card.isEmpty()) {
+				playerInventory.placeItemBackInInventory(card);
+			}
+			activeCardIndex = NO_ACTIVE_CARD;
+		}
+
+		compactWorkingCards();
+		List<ItemStack> cards = drainWorkingCards();
+		ItemStack liveStack = locator.resolve(player);
+		if (liveStack.getItem() instanceof TunablePortableTickerItem) {
+			TunablePortableTickerItem.setCards(liveStack, cards);
+			return;
+		}
+		for (ItemStack card : cards)
+			playerInventory.placeItemBackInInventory(card);
 	}
 
 	private void addSlots() {
@@ -150,6 +290,12 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	}
 
 	@Override
+	public void removed(Player player) {
+		closeTransaction();
+		super.removed(player);
+	}
+
+	@Override
 	public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
 		if (isOwnerInteraction(slotId, dragType, clickType))
 			return;
@@ -157,6 +303,9 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	}
 
 	private boolean isOwnerInteraction(int slotId, int dragType, ClickType clickType) {
+		if (clickType == ClickType.SWAP
+			&& locator.source() == TunablePortableTickerLocator.Source.OFF_HAND && dragType == 40)
+			return true;
 		if (ownerMenuSlot < 0)
 			return false;
 		if (slotId == ownerMenuSlot)
@@ -172,6 +321,8 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	@Override
 	public @NotNull ItemStack quickMoveStack(Player player, int index) {
 		if (!slotsActive)
+			return ItemStack.EMPTY;
+		if (index < 0 || index >= slots.size())
 			return ItemStack.EMPTY;
 
 		Slot clickedSlot = slots.get(index);

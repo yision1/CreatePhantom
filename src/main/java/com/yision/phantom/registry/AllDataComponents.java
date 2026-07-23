@@ -5,6 +5,7 @@ import com.yision.phantom.item.miniphantom.MiniPhantomCargo;
 import com.yision.phantom.item.miniphantom.MiniPhantomReturnTarget;
 import com.yision.phantom.CreatePhantom;
 import java.util.function.Supplier;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -81,7 +82,10 @@ public final class AllDataComponents {
 	public static final Supplier<DataComponentType<Map<UUID, Map<UUID, List<Integer>>>>> TUNABLE_PORTABLE_TICKER_HIDDEN_CATEGORIES =
 		REGISTER.registerComponentType("tunable_portable_ticker_hidden_categories",
 			builder -> builder.persistent(Codec.unboundedMap(UUIDUtil.STRING_CODEC,
-				Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.INT.listOf()))));
+					Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.INT.listOf())))
+				.networkSynchronized(ByteBufCodecs.map(HashMap::new, UUIDUtil.STREAM_CODEC,
+					ByteBufCodecs.map(HashMap::new, UUIDUtil.STREAM_CODEC,
+						CatnipStreamCodecBuilders.list(ByteBufCodecs.INT)))));
 
 	private AllDataComponents() {}
 

@@ -105,7 +105,7 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 			: "");
 
 		menu.proxyInventory.setStackInSlot(0, editingItem.copy());
-		CatnipServices.NETWORK.sendToServer(new TunablePortableTickerCardSlotPacket(editingItem.copy(), 0));
+		CatnipServices.NETWORK.sendToServer(new TunablePortableTickerCardSlotPacket(index, true, ""));
 
 		addRenderableWidget(editorConfirm);
 		addRenderableWidget(editorEditBox);
@@ -138,7 +138,8 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 				cards.set(editingIndex, stackInSlot);
 		}
 
-		CatnipServices.NETWORK.sendToServer(new TunablePortableTickerCardSlotPacket(ItemStack.EMPTY, 0));
+		CatnipServices.NETWORK.sendToServer(
+			new TunablePortableTickerCardSlotPacket(editingIndex, false, editorEditBox.getValue()));
 		editingItem = null;
 		editorConfirm = null;
 		editorEditBox = null;
@@ -274,7 +275,7 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 					ImmutableList.of(Component.translatable("gui.createphantom.tunable_portable_ticker.delete_card")),
 					mx, my);
 				if (click == 0) {
-					CatnipServices.NETWORK.sendToServer(new TunablePortableTickerCardRefundPacket(card.copy()));
+					CatnipServices.NETWORK.sendToServer(new TunablePortableTickerCardRefundPacket(i));
 					cards.remove(i);
 					init();
 				}
@@ -289,8 +290,11 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 								.withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)),
 						mx, my);
 					if (click == 0) {
+						int destination = hasShiftDown() ? 0 : i - 1;
+						CatnipServices.NETWORK.sendToServer(
+							new TunablePortableTickerCardEditPacket(i, destination));
 						cards.remove(card);
-						cards.add(hasShiftDown() ? 0 : i - 1, card);
+						cards.add(destination, card);
 						init();
 					}
 					return true;
@@ -302,8 +306,11 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 								.withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)),
 						mx, my);
 					if (click == 0) {
+						int destination = hasShiftDown() ? cards.size() - 1 : i + 1;
+						CatnipServices.NETWORK.sendToServer(
+							new TunablePortableTickerCardEditPacket(i, destination));
 						cards.remove(card);
-						cards.add(hasShiftDown() ? cards.size() : i + 1, card);
+						cards.add(destination, card);
 						init();
 					}
 					return true;
@@ -479,9 +486,6 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 
 	@Override
 	public void removed() {
-		if (editingItem != null)
-			stopEditing(false);
-		CatnipServices.NETWORK.sendToServer(new TunablePortableTickerCardEditPacket(menu.locator, cards));
 		super.removed();
 	}
 

@@ -14,14 +14,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerPlayer;
 
 public class TunablePortableTickerMenu extends AbstractContainerMenu {
 	public Object screenReference;
 	public final Player player;
 	public final Inventory playerInventory;
 	public final TunablePortableTickerLocator locator;
-	public final int channel;
-	public final UUID sessionNetwork;
+	public int channel;
+	public UUID sessionNetwork;
 	public final ItemStack tickerStack;
 	public final List<ItemStack> cards;
 	public final List<ItemStack> categories;
@@ -85,12 +86,30 @@ public class TunablePortableTickerMenu extends AbstractContainerMenu {
 		if (!(resolved.getItem() instanceof TunablePortableTickerItem))
 			return false;
 		UUID network = TunablePortableTickerItem.networkFromChannel(resolved, channel);
-		return sessionNetwork != null && sessionNetwork.equals(network);
+		if (sessionNetwork == null || !sessionNetwork.equals(network))
+			return false;
+		return !(player instanceof ServerPlayer serverPlayer)
+			|| TunablePortableTickerSession.mayInteract(serverPlayer, sessionNetwork);
 	}
 
 	@Override
 	public ItemStack quickMoveStack(Player player, int index) {
 		return ItemStack.EMPTY;
+	}
+
+	public boolean selectChannel(ServerPlayer player, int newChannel) {
+		if (newChannel < 0 || newChannel >= TunablePortableTickerItem.MAX_CHANNELS)
+			return false;
+		ItemStack resolved = locator.resolve(player);
+		if (!(resolved.getItem() instanceof TunablePortableTickerItem))
+			return false;
+		UUID newNetwork = TunablePortableTickerItem.networkFromChannel(resolved, newChannel);
+		if (newNetwork == null || !TunablePortableTickerSession.mayInteract(player, newNetwork))
+			return false;
+		channel = newChannel;
+		sessionNetwork = newNetwork;
+		TunablePortableTickerItem.setSelectedChannel(resolved, newChannel);
+		return true;
 	}
 
 	public static void writeMenuData(RegistryFriendlyByteBuf buffer, TunablePortableTickerLocator locator,

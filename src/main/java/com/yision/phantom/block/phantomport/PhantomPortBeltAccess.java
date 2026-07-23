@@ -36,6 +36,9 @@ final class PhantomPortBeltAccess {
 		}
 
 		BlockPos funnelPos = funnelPos(side);
+		if (!port.getLevel().hasChunkAt(funnelPos)) {
+			return false;
+		}
 		BlockState funnelState = port.getLevel().getBlockState(funnelPos);
 		if (AllBlocks.ANDESITE_FUNNEL.has(funnelState)) {
 			if (funnelState.getValue(FunnelBlock.FACING) != side) {
@@ -64,6 +67,9 @@ final class PhantomPortBeltAccess {
 		}
 
 		BlockPos beltPos = beltPos(side);
+		if (!port.getLevel().hasChunkAt(beltPos)) {
+			return false;
+		}
 		if (!(port.getLevel().getBlockEntity(beltPos) instanceof BeltBlockEntity)) {
 			return false;
 		}
@@ -78,6 +84,9 @@ final class PhantomPortBeltAccess {
 			return side;
 		}
 		BlockPos beltPos = beltPos(side);
+		if (!port.getLevel().hasChunkAt(beltPos)) {
+			return side;
+		}
 		BlockEntityBehaviour beltInput = BlockEntityBehaviour.get(port.getLevel(), beltPos,
 			com.simibubi.create.content.kinetics.belt.behaviour.DirectBeltInputBehaviour.TYPE);
 		if (beltInput == null) {
@@ -91,14 +100,14 @@ final class PhantomPortBeltAccess {
 
 	@Nullable IItemHandler launchBeltHandler(Direction side) {
 		BlockPos beltPos = beltPos(side);
-		return port.getLevel() != null
+		return port.getLevel() != null && port.getLevel().hasChunkAt(beltPos)
 			? port.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, beltPos, Direction.UP)
 			: null;
 	}
 
 	boolean tryInsertToLaunchBelt(ItemStack stack) {
 		Direction side = specialSide();
-		if (!hasManualDispatchFunnel(side) || !isBeltOutputCompatible(side)) {
+		if (!hasManualDispatchFunnel(side)) {
 			return false;
 		}
 		IItemHandler beltHandler = launchBeltHandler(side);
