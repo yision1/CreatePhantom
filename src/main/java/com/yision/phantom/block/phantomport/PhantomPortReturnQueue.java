@@ -45,7 +45,7 @@ final class PhantomPortReturnQueue {
 		if (pendingReturnCarriers.isEmpty()) {
 			return;
 		}
-		if (!inventory.hasStoredCarrier()) {
+		if (!inventory.hasUsableCarrier()) {
 			pendingReturnCarriers.clear();
 			port.setChanged();
 			return;
@@ -67,13 +67,13 @@ final class PhantomPortReturnQueue {
 		if (task.isPlayerReturn()) {
 			if (tryQueueStoredReturnCarrierToPlayer(task.playerId())) {
 				pendingReturnCarriers.removeFirst();
-				port.markPortContentsChanged();
+				port.setChanged();
 				return;
 			}
 		} else if (task.isPhantomPortReturn()) {
 			if (tryQueueStoredReturnCarrier(task.dimension(), task.pos())) {
 				pendingReturnCarriers.removeFirst();
-				port.markPortContentsChanged();
+				port.setChanged();
 				return;
 			}
 		}
@@ -82,7 +82,7 @@ final class PhantomPortReturnQueue {
 			if (task.isPlayerReturn()) {
 				inventory.dropOneCarrier();
 			}
-			port.markPortContentsChanged();
+			port.setChanged();
 			return;
 		}
 		pendingReturnCarriers.removeFirst();
@@ -110,7 +110,6 @@ final class PhantomPortReturnQueue {
 		}
 		if (!inventory.addPackage(box.copy(), false)) {
 			inventory.carrierInventory.extractItem(0, 1, false);
-			port.markPortContentsChanged();
 			return false;
 		}
 		schedulePendingReturnToPlayer(playerId, delayTicks);
@@ -148,13 +147,13 @@ final class PhantomPortReturnQueue {
 	private void schedulePendingReturnCarrier(ResourceKey<Level> returnDimension, BlockPos returnPos, int delayTicks) {
 		pendingReturnCarriers.addLast(PendingReturnCarrier.toPhantomPort(
 			returnDimension, returnPos, currentGameTime(), Math.max(0, delayTicks), RETURN_RETRY_TICKS));
-		port.markPortContentsChanged();
+		port.setChanged();
 	}
 
 	private void schedulePendingReturnToPlayer(UUID playerId, int delayTicks) {
 		pendingReturnCarriers.addLast(PendingReturnCarrier.toPlayer(
 			playerId, currentGameTime(), Math.max(0, delayTicks), RETURN_RETRY_TICKS));
-		port.markPortContentsChanged();
+		port.setChanged();
 	}
 
 	private long currentGameTime() {
@@ -166,7 +165,7 @@ final class PhantomPortReturnQueue {
 			|| !AirCourierDispatchService.canReceiveCarrierTarget(serverLevel, returnDimension, returnPos)) {
 			return false;
 		}
-		if (!inventory.hasStoredCarrier()) {
+		if (!inventory.hasUsableCarrier()) {
 			return false;
 		}
 		Direction side = beltAccess.specialSide();
@@ -188,7 +187,6 @@ final class PhantomPortReturnQueue {
 		}
 		ItemStack remainder = beltHandler.insertItem(0, returningCarrier.copy(), false);
 		if (remainder.isEmpty()) {
-			port.markPortContentsChanged();
 			return true;
 		}
 		inventory.returnCarrier(storedCarrier);
@@ -203,7 +201,7 @@ final class PhantomPortReturnQueue {
 		if (player == null || !player.isAlive()) {
 			return false;
 		}
-		if (!inventory.hasStoredCarrier()) {
+		if (!inventory.hasUsableCarrier()) {
 			return false;
 		}
 		Direction side = beltAccess.specialSide();
@@ -225,7 +223,6 @@ final class PhantomPortReturnQueue {
 		}
 		ItemStack remainder = beltHandler.insertItem(0, returningCarrier.copy(), false);
 		if (remainder.isEmpty()) {
-			port.markPortContentsChanged();
 			return true;
 		}
 		inventory.returnCarrier(storedCarrier);

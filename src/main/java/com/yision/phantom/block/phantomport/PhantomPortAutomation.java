@@ -83,7 +83,6 @@ final class PhantomPortAutomation {
 
 			ItemStack actualRemainder = adjacentInventory.insertItem(slot, extracted, false);
 			if (actualRemainder.isEmpty()) {
-				port.markPortContentsChanged();
 				return true;
 			}
 

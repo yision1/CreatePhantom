@@ -93,6 +93,18 @@ final class PhantomPortDispatchAccess {
 				extracted.setCount(1);
 
 				if (!simulate) {
+					if (!inventory.hasUsableCarrier()) {
+						return ItemStack.EMPTY;
+					}
+					ItemStack storedCarrier = inventory.extractOneCarrier(false);
+					if (storedCarrier.isEmpty()) {
+						return ItemStack.EMPTY;
+					}
+					ItemStack extractedPackage = port.inventory.extractItem(candidate.packageSlot(), 1, false);
+					if (extractedPackage.isEmpty()) {
+						inventory.returnCarrier(storedCarrier);
+						return ItemStack.EMPTY;
+					}
 					if (candidate.target() instanceof AirCourierTarget.PlayerTarget playerTarget) {
 						ServerPlayer player = port.getLevel() instanceof ServerLevel sl
 							? sl.getServer().getPlayerList().getPlayer(playerTarget.playerId()) : null;
@@ -104,10 +116,7 @@ final class PhantomPortDispatchAccess {
 							}
 						}
 					}
-					port.inventory.extractItem(candidate.packageSlot(), 1, false);
-					inventory.carrierInventory.extractItem(0, 1, false);
 					pendingHudEntries.remove(candidate.packageSlot());
-					port.markPortContentsChanged();
 				}
 
 				return extracted;
@@ -155,9 +164,6 @@ final class PhantomPortDispatchAccess {
 					return ItemStack.EMPTY;
 				}
 				ItemStack extracted = port.inventory.extractItem(packageSlot, amount, simulate);
-				if (!simulate && !extracted.isEmpty()) {
-					port.markPortContentsChanged();
-				}
 				return extracted;
 			}
 
@@ -188,7 +194,7 @@ final class PhantomPortDispatchAccess {
 		if (!beltAccess.canDispatchThrough(side)) {
 			return null;
 		}
-		if (inventory.carrierInventory.getStackInSlot(0).isEmpty()) {
+		if (!inventory.hasUsableCarrier()) {
 			return null;
 		}
 

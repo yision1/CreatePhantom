@@ -29,6 +29,7 @@ import org.jetbrains.annotations.NotNull;
 public class PhantomPortBlock extends HorizontalDirectionalBlock implements IWrenchable, IBE<PhantomPortBlockEntity> {
 	public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
 	public static final BooleanProperty OPEN = BooleanProperty.create("open");
+	public static final BooleanProperty ACTIVITY = BooleanProperty.create("activity");
 	public static final MapCodec<PhantomPortBlock> CODEC = simpleCodec(PhantomPortBlock::new);
 	private static final VoxelShape SHAPE_NORTH = Shapes.or(
 		box(0, 0, 0, 16, 2, 16),
@@ -48,13 +49,14 @@ public class PhantomPortBlock extends HorizontalDirectionalBlock implements IWre
 	public PhantomPortBlock(Properties properties) {
 		super(properties);
 		registerDefaultState(defaultBlockState().setValue(FACING, Direction.NORTH)
-			.setValue(OPEN, false));
+			.setValue(OPEN, false)
+			.setValue(ACTIVITY, false));
 	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
 		super.createBlockStateDefinition(builder);
-		builder.add(FACING, OPEN);
+		builder.add(FACING, OPEN, ACTIVITY);
 	}
 
 	@Override
@@ -90,6 +92,18 @@ public class PhantomPortBlock extends HorizontalDirectionalBlock implements IWre
 	public @NotNull VoxelShape getCollisionShape(@NotNull BlockState state, @NotNull BlockGetter level,
 		@NotNull BlockPos pos, @NotNull CollisionContext context) {
 		return getShapeForFacing(state.getValue(FACING));
+	}
+
+	@Override
+	public boolean hasAnalogOutputSignal(BlockState state) {
+		return true;
+	}
+
+	@Override
+	public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+		return getBlockEntityOptional(level, pos)
+			.map(PhantomPortBlockEntity::getComparatorOutput)
+			.orElse(0);
 	}
 
 	private static VoxelShape getShapeForFacing(Direction facing) {

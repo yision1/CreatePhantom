@@ -18,6 +18,7 @@ import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,6 +43,7 @@ public class PhantomPortBlockEntity extends PackagePortBlockEntity {
 		dispatchAccess = new PhantomPortDispatchAccess(this, portInventory, beltAccess);
 		automation = new PhantomPortAutomation(this, portInventory, beltAccess);
 		returnQueue = new PhantomPortReturnQueue(this, portInventory, beltAccess);
+		inventory.whenContentsChanged(this::onPackageContentsChanged);
 	}
 
 	@Override
@@ -79,12 +81,31 @@ public class PhantomPortBlockEntity extends PackagePortBlockEntity {
 		return portInventory.carrierInventory();
 	}
 
-	void markPortContentsChanged() {
+	@Override
+	public int getComparatorOutput() {
+		return ItemHandlerHelper.calcRedstoneFromInventory(portInventory.combinedHandler());
+	}
+
+	private void onPackageContentsChanged(int slot) {
 		dispatchAccess.clearPendingHudEntries();
-		setChanged();
-		if (level != null) {
-			level.blockEntityChanged(worldPosition);
+		signalObserverActivity();
+	}
+
+	void onCarrierContentsChanged() {
+		dispatchAccess.clearPendingHudEntries();
+		notifyUpdate();
+		signalObserverActivity();
+	}
+
+	private void signalObserverActivity() {
+		if (level == null || level.isClientSide()) {
+			return;
 		}
+		BlockState state = level.getBlockState(worldPosition);
+		if (!(state.getBlock() instanceof PhantomPortBlock) || !state.hasProperty(PhantomPortBlock.ACTIVITY)) {
+			return;
+		}
+		level.setBlockAndUpdate(worldPosition, state.cycle(PhantomPortBlock.ACTIVITY));
 	}
 
 	public boolean canReceiveCourier(ItemStack box) {

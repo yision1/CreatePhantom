@@ -27,6 +27,11 @@ final class PhantomPortInventory {
 			public boolean isItemValid(int slot, @NotNull ItemStack stack) {
 				return isEmptyCarrier(stack);
 			}
+
+			@Override
+			protected void onContentsChanged(int slot) {
+				port.onCarrierContentsChanged();
+			}
 		};
 
 		this.combinedHandler = new IItemHandler() {
@@ -118,9 +123,6 @@ final class PhantomPortInventory {
 		ItemStack extracted = isPackageSlot(slot)
 			? port.inventory.extractItem(slot, amount, simulate)
 			: carrierInventory.extractItem(toCarrierSlot(slot), amount, simulate);
-		if (!simulate && !extracted.isEmpty()) {
-			port.markPortContentsChanged();
-		}
 		return extracted;
 	}
 
@@ -145,11 +147,14 @@ final class PhantomPortInventory {
 			&& MiniPhantomItem.getPlayerReturnTarget(stack).isEmpty();
 	}
 
-	boolean hasStoredCarrier() {
-		return !carrierInventory.getStackInSlot(0).isEmpty();
+	boolean hasUsableCarrier() {
+		return isEmptyCarrier(carrierInventory.getStackInSlot(0));
 	}
 
 	ItemStack extractOneCarrier(boolean simulate) {
+		if (!hasUsableCarrier()) {
+			return ItemStack.EMPTY;
+		}
 		return carrierInventory.extractItem(0, 1, simulate);
 	}
 
@@ -161,9 +166,6 @@ final class PhantomPortInventory {
 			ItemStack remainder = port.inventory.insertItem(slot, stack, simulate);
 			if (!remainder.isEmpty()) {
 				continue;
-			}
-			if (!simulate) {
-				port.markPortContentsChanged();
 			}
 			return true;
 		}
@@ -182,7 +184,6 @@ final class PhantomPortInventory {
 		ItemStack carrier = AllItems.MINI_PHANTOM.asStack();
 		carrierInventory.insertItem(0, carrier.copy(), false);
 		addPackage(box.copy(), false);
-		port.markPortContentsChanged();
 		return true;
 	}
 
@@ -208,7 +209,6 @@ final class PhantomPortInventory {
 			return false;
 		}
 		carrierInventory.insertItem(0, AllItems.MINI_PHANTOM.asStack().copy(), false);
-		port.markPortContentsChanged();
 		return true;
 	}
 
@@ -217,7 +217,7 @@ final class PhantomPortInventory {
 	}
 
 	void dropOneCarrier() {
-		ItemStack carrier = carrierInventory.extractItem(0, 1, false);
+		ItemStack carrier = extractOneCarrier(false);
 		if (carrier.isEmpty() || port.getLevel() == null) {
 			return;
 		}

@@ -44,66 +44,45 @@ public class PhantomPortMenu extends PackagePortMenu {
 	protected void addSlots() {
 		super.addSlots();
 		if (contentHolder instanceof PhantomPortBlockEntity phantomPortBlockEntity) {
-			addSlot(new SlotItemHandler(phantomPortBlockEntity.getCarrierInventory(), 0, 12, 60) {
-				@Override
-				public boolean mayPlace(ItemStack stack) {
-					return stack.is(AllItems.MINI_PHANTOM.get());
-				}
-			});
+			addSlot(new SlotItemHandler(phantomPortBlockEntity.getCarrierInventory(), 0, 12, 60));
 		}
 	}
 
 	@Override
 	public @NotNull ItemStack quickMoveStack(Player player, int index) {
+		if (index < 0 || index >= slots.size()) {
+			return ItemStack.EMPTY;
+		}
 		Slot slot = slots.get(index);
 		if (!slot.hasItem()) {
-			return super.quickMoveStack(player, index);
+			return ItemStack.EMPTY;
 		}
 
-		ItemStack stack = slot.getItem();
+		int packageSlotCount = contentHolder.inventory.getSlots();
 		int carrierSlotIndex = slots.size() - 1;
+		ItemStack sourceStack = slot.getItem();
 
 		if (index == carrierSlotIndex) {
-			int originalCount = stack.getCount();
-			if (moveItemStackTo(stack, 18, carrierSlotIndex, false)) {
-				int moved = originalCount - stack.getCount();
-				if (stack.isEmpty()) {
-					slot.set(ItemStack.EMPTY);
-				} else {
-					slot.setChanged();
-				}
-				ItemStack result = stack.copy();
-				result.setCount(moved);
-				return result;
+			ItemStack stack = sourceStack.copy();
+			ItemStack moved = stack.copy();
+			if (!moveItemStackTo(stack, packageSlotCount, carrierSlotIndex, true)) {
+				return ItemStack.EMPTY;
 			}
-		} else if (stack.is(AllItems.MINI_PHANTOM.get())) {
-			Slot carrierSlot = slots.get(carrierSlotIndex);
-			ItemStack targetStack = carrierSlot.getItem();
+			slot.setByPlayer(stack.isEmpty() ? ItemStack.EMPTY : stack.copy());
+			return moved;
+		}
 
-			int maxStackSize = stack.getMaxStackSize();
-			int space = maxStackSize - (targetStack.isEmpty() ? 0 : targetStack.getCount());
-
-			if (space > 0) {
-				int toMove = Math.min(space, stack.getCount());
-				if (targetStack.isEmpty()) {
-					ItemStack moved = stack.copy();
-					moved.setCount(toMove);
-					carrierSlot.set(moved);
-				} else {
-					targetStack.grow(toMove);
-					carrierSlot.setChanged();
-				}
-				stack.shrink(toMove);
-				if (stack.isEmpty()) {
-					slot.set(ItemStack.EMPTY);
-				} else {
-					slot.setChanged();
-				}
-				ItemStack result = stack.copy();
-				result.setCount(toMove);
-				return result;
+		if (sourceStack.is(AllItems.MINI_PHANTOM.get())) {
+			if (!PhantomPortInventory.isEmptyCarrier(sourceStack)) {
+				return ItemStack.EMPTY;
 			}
-			return ItemStack.EMPTY;
+			ItemStack stack = sourceStack.copy();
+			ItemStack moved = stack.copy();
+			if (!moveItemStackTo(stack, carrierSlotIndex, carrierSlotIndex + 1, false)) {
+				return ItemStack.EMPTY;
+			}
+			slot.setByPlayer(stack.isEmpty() ? ItemStack.EMPTY : stack.copy());
+			return moved;
 		}
 
 		return super.quickMoveStack(player, index);
