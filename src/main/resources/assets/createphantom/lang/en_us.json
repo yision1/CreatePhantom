@@ -1,6 +1,9 @@
 {
   "itemGroup.createphantom": "Create: Phantom",
   "item.createphantom.mini_phantom": "Cargo Phantom",
+  "item.createphantom.mini_phantom.tooltip.summary": "The item form of a Cargo Phantom",
+  "item.createphantom.mini_phantom.tooltip.condition1": "When right-clicked",
+  "item.createphantom.mini_phantom.tooltip.behaviour1": "Opens the package editing interface",
   "block.createphantom.phantomport": "Phantom Port",
   "gui.createphantom.mini_phantom.invalid_target_phantomport": "No valid target Phantom Port was found",
   "gui.createphantom.phantomport.arrival_time_display": "Arrival ETA: %s",
@@ -17,6 +20,8 @@
   "item.createphantom.storage_channel_extension_card.tooltip.summary": "Stores a Create logistics network and its visible categories",
   "item.createphantom.storage_channel_extension_card.tooltip.condition1": "When used on a logistics network member",
   "item.createphantom.storage_channel_extension_card.tooltip.behaviour1": "Binds this card to that network",
+  "item.createphantom.storage_channel_extension_card.tooltip.condition2": "When used on a clipboard",
+  "item.createphantom.storage_channel_extension_card.tooltip.behaviour2": "Stores the logistics address on this card",
   "item.createphantom.tunable_portable_ticker": "Tunable Portable Stock Ticker",
   "item.createphantom.tunable_portable_ticker.screen_title": "Tunable Portable Stock Ticker",
   "item.createphantom.tunable_portable_ticker.tooltip.summary": "A portable stock ticker that can be carried around",
