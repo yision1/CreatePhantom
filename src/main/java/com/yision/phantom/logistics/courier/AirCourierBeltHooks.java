@@ -3,6 +3,7 @@ package com.yision.phantom.logistics.courier;
 import com.simibubi.create.content.kinetics.belt.BeltBlockEntity;
 import com.simibubi.create.content.kinetics.belt.BeltHelper;
 import com.simibubi.create.content.kinetics.belt.transport.TransportedItemStack;
+import com.yision.phantom.compat.sable.SableCompat;
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
 import java.util.UUID;
@@ -61,22 +62,20 @@ public final class AirCourierBeltHooks {
 			return false;
 		}
 
-		Vec3 launchDirection = AirCourierHelper.getCourierLaunchDirection(belt, stack);
-		Vec3 launchMotion = AirCourierHelper.getCourierLaunchMotion(belt, stack);
-		Vec3 spawnPos = getSpawnPos(belt, stack, launchMotion);
+		LaunchGeometry launch = getLaunchGeometry(serverLevel, belt, stack);
 		UUID taskId = UUID.randomUUID();
 		UUID hudEntryId = MiniPhantomItem.getHudEntryId(stack.stack);
 
 		AirCourierTask task = switch (target) {
 			case AirCourierTarget.PhantomPortTarget phantomPort -> AirCourierTask.forPackageToAirport(
 				taskId, box, serverLevel, phantomPort.dimension(), phantomPort.pos(),
-				spawnPos, launchDirection, launchMotion,
+				launch.spawnPos(), launch.direction(), launch.motion(),
 				sourcePhantomPortDimension, sourcePhantomPortPos, null, hudEntryId, null);
 			case AirCourierTarget.PlayerTarget player -> {
 				ServerPlayer targetPlayer = serverLevel.getServer().getPlayerList().getPlayer(player.playerId());
 				yield targetPlayer != null
 					? AirCourierTask.forPackageToPlayer(taskId, box, serverLevel, player.playerId(),
-						player.dimension(), spawnPos, launchDirection, launchMotion,
+						player.dimension(), launch.spawnPos(), launch.direction(), launch.motion(),
 						sourcePhantomPortDimension, sourcePhantomPortPos, null, hudEntryId, null)
 					: null;
 			}
@@ -104,11 +103,10 @@ public final class AirCourierBeltHooks {
 			serverLevel, target.dimension(), target.pos())) {
 			return false;
 		}
-		Vec3 launchDirection = AirCourierHelper.getCourierLaunchDirection(belt, stack);
-		Vec3 launchMotion = AirCourierHelper.getCourierLaunchMotion(belt, stack);
+		LaunchGeometry launch = getLaunchGeometry(serverLevel, belt, stack);
 		AirCourierTask task = AirCourierTask.forCarrierReturn(
 			UUID.randomUUID(), serverLevel, target.dimension(), target.pos(),
-			getSpawnPos(belt, stack, launchMotion), launchDirection, launchMotion);
+			launch.spawnPos(), launch.direction(), launch.motion());
 
 		AirCourierTaskManager.addTask(serverLevel.getServer(), task);
 		return true;
@@ -127,11 +125,10 @@ public final class AirCourierBeltHooks {
 			return false;
 		}
 
-		Vec3 launchDirection = AirCourierHelper.getCourierLaunchDirection(belt, stack);
-		Vec3 launchMotion = AirCourierHelper.getCourierLaunchMotion(belt, stack);
+		LaunchGeometry launch = getLaunchGeometry(serverLevel, belt, stack);
 		AirCourierTask task = AirCourierTask.forCarrierReturnToPlayer(
 			UUID.randomUUID(), serverLevel, player.getUUID(), player.serverLevel().dimension(),
-			getSpawnPos(belt, stack, launchMotion), launchDirection, launchMotion);
+			launch.spawnPos(), launch.direction(), launch.motion());
 
 		AirCourierTaskManager.addTask(serverLevel.getServer(), task);
 		return true;
@@ -141,4 +138,17 @@ public final class AirCourierBeltHooks {
 		Vec3 outPos = BeltHelper.getVectorForOffset(belt, stack.beltPosition);
 		return outPos.add(launchMotion.normalize().scale(0.001)).add(0, 6 / 16f, 0);
 	}
+
+	private static LaunchGeometry getLaunchGeometry(ServerLevel level, BeltBlockEntity belt,
+		TransportedItemStack stack) {
+		Vec3 localDirection = AirCourierHelper.getCourierLaunchDirection(belt, stack);
+		Vec3 localMotion = AirCourierHelper.getCourierLaunchMotion(belt, stack);
+		Vec3 localSpawnPos = getSpawnPos(belt, stack, localMotion);
+		return new LaunchGeometry(
+			SableCompat.projectOutOfSubLevel(level, localSpawnPos),
+			SableCompat.projectVector(level, localSpawnPos, localDirection),
+			SableCompat.projectVector(level, localSpawnPos, localMotion));
+	}
+
+	private record LaunchGeometry(Vec3 spawnPos, Vec3 direction, Vec3 motion) {}
 }

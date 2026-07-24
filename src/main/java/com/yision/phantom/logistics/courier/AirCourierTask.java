@@ -567,8 +567,12 @@ public final class AirCourierTask {
 
 	private Vec3 getApproachGate(Vec3 landingTarget, boolean playerTarget) {
 		Vec3 nextGate = AirCourierFlightTargets.approachGate(FLIGHT, position, motion, landingTarget, playerTarget);
-		if (cachedApproachGate == null || !playerTarget) {
-			cachedApproachGate = cachedApproachGate == null ? nextGate : cachedApproachGate;
+		if (!playerTarget) {
+			cachedApproachGate = nextGate;
+			return cachedApproachGate;
+		}
+		if (cachedApproachGate == null) {
+			cachedApproachGate = nextGate;
 			return cachedApproachGate;
 		}
 		approachGateTicksSinceUpdate++;
@@ -625,8 +629,8 @@ public final class AirCourierTask {
 				return null;
 			}
 			return new FlightTarget(level, null,
-				AirCourierFlightTargets.cruiseTarget(FLIGHT, targetPhantomPortPos),
-				AirCourierFlightTargets.landingTarget(FLIGHT, targetPhantomPortPos),
+				AirCourierFlightTargets.cruiseTarget(FLIGHT, level, targetPhantomPortPos),
+				AirCourierFlightTargets.landingTarget(FLIGHT, level, targetPhantomPortPos),
 				FLIGHT.phantomPortCompletionDistance());
 		}
 

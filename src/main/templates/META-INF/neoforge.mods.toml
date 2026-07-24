@@ -49,8 +49,8 @@ ordering="AFTER"
 side="BOTH"
 
 [[dependencies.${mod_id}]]
-modId="fluid"
+modId="sable"
 type="optional"
-versionRange="[9.9.9,)"
+versionRange="${sable_version_range}"
 ordering="AFTER"
 side="BOTH"

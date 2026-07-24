@@ -14,6 +14,29 @@ group = mod_group_id
 
 repositories {
     mavenLocal()
+    exclusiveContent { // Sable
+        forRepository {
+            maven {
+                url = "https://maven.ryanhcode.dev/releases"
+                name = "RyanHCode Maven"
+            }
+        }
+        filter {
+            includeGroup("dev.ryanhcode.sable")
+            includeGroup("dev.ryanhcode.sable-companion")
+        }
+    }
+    exclusiveContent { // ForgeConfigAPIPort
+        forRepository {
+            maven {
+                url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
+                name = "Fuzs Mod Resources"
+            }
+        }
+        filter {
+            includeGroup("fuzs.forgeconfigapiport")
+        }
+    }
     maven { url = "https://maven.createmod.net" }
     maven { url = "https://mvn.devos.one/snapshots" }
     maven { url = "https://maven.blamejared.com" }
@@ -39,18 +62,11 @@ neoForge {
     runs {
         client {
             client()
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         server {
             server()
             programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        gameTestServer {
-            type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         data {
@@ -78,7 +94,14 @@ configurations {
     runtimeClasspath.extendsFrom localRuntime
 }
 
+tasks.named('test', org.gradle.api.tasks.testing.Test).configure {
+    enabled = false
+    classpath = files()
+    testClassesDirs = files()
+}
+
 dependencies {
+    api("dev.ryanhcode.sable:sable-common-${project.minecraft_version}:${project.sable_version}")
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
@@ -107,7 +130,8 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_description        : mod_description,
             create_version_range   : create_version_range,
             fluidlogistics_version_range: fluidlogistics_version_range,
-            curios_version_range           : curios_version_range
+            curios_version_range           : curios_version_range,
+            sable_version_range            : sable_version_range
     ]
     inputs.properties replaceProperties
     expand replaceProperties

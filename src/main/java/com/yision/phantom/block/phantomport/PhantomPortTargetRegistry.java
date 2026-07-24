@@ -1,5 +1,6 @@
 package com.yision.phantom.block.phantomport;
 
+import com.yision.phantom.compat.sable.SableCompat;
 import com.yision.phantom.logistics.address.PhantomAddressRules;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -52,7 +53,7 @@ public final class PhantomPortTargetRegistry {
 			.filter(entry -> PhantomAddressRules.matches(normalized, entry.getValue().address))
 			.sorted(Comparator
 				.<Map.Entry<BlockPos, Entry>>comparingInt(entry -> exactMatch(normalized, entry.getValue().address) ? 0 : 1)
-				.thenComparingDouble(entry -> distanceTo(origin, entry.getKey()))
+				.thenComparingDouble(entry -> distanceTo(level, origin, entry.getKey()))
 				.thenComparing(entry -> entry.getValue().address))
 			.map(Map.Entry::getKey)
 			.findFirst()
@@ -86,7 +87,8 @@ public final class PhantomPortTargetRegistry {
 			.sorted(Comparator
 				.<TargetLocation>comparingInt(target -> target.dimension().equals(level.dimension()) ? 0 : 1)
 				.thenComparingInt(target -> exactMatch(normalized, target.address()) ? 0 : 1)
-				.thenComparingDouble(target -> target.dimension().equals(level.dimension()) ? distanceTo(origin, target.pos()) : 0)
+				.thenComparingDouble(target -> target.dimension().equals(level.dimension())
+					? distanceTo(level, origin, target.pos()) : 0)
 				.thenComparing(target -> target.dimension().location().toString())
 				.thenComparing(TargetLocation::address))
 			.filter(predicate)
@@ -128,11 +130,13 @@ public final class PhantomPortTargetRegistry {
 		return PhantomAddressRules.canonical(left).equalsIgnoreCase(PhantomAddressRules.canonical(right));
 	}
 
-	private static double distanceTo(@Nullable Vec3 origin, BlockPos pos) {
+	private static double distanceTo(ServerLevel level, @Nullable Vec3 origin, BlockPos pos) {
 		if (origin == null) {
 			return 0;
 		}
-		return origin.distanceToSqr(Vec3.atCenterOf(pos));
+		Vec3 projectedOrigin = SableCompat.projectOutOfSubLevel(level, origin);
+		Vec3 projectedTarget = SableCompat.projectOutOfSubLevel(level, Vec3.atCenterOf(pos));
+		return projectedOrigin.distanceToSqr(projectedTarget);
 	}
 
 	private static boolean isExcluded(ResourceKey<Level> dimension, BlockPos pos,

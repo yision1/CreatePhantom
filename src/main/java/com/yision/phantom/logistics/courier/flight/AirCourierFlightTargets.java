@@ -1,9 +1,11 @@
 package com.yision.phantom.logistics.courier.flight;
 
 import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
+import com.yision.phantom.compat.sable.SableCompat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,7 +16,7 @@ public final class AirCourierFlightTargets {
 	public static Vec3 cruiseTarget(AirCourierFlightProfile profile,
 		@Nullable PhantomPortBlockEntity phantomPort, @Nullable ServerPlayer player) {
 		if (phantomPort != null) {
-			return cruiseTarget(profile, phantomPort.getBlockPos());
+			return cruiseTarget(profile, phantomPort.getLevel(), phantomPort.getBlockPos());
 		}
 		if (player != null) {
 			return playerDeliveryTarget(profile, player).add(0, profile.playerCruiseHeight() - profile.playerTargetHeight(), 0);
@@ -23,13 +25,19 @@ public final class AirCourierFlightTargets {
 	}
 
 	public static Vec3 cruiseTarget(AirCourierFlightProfile profile, BlockPos phantomPortPos) {
-		return Vec3.atCenterOf(phantomPortPos).add(0, profile.phantomPortCruiseHeight(), 0);
+		return cruiseTarget(profile, null, phantomPortPos);
+	}
+
+	public static Vec3 cruiseTarget(AirCourierFlightProfile profile,
+		@Nullable Level level, BlockPos phantomPortPos) {
+		return SableCompat.projectOutOfSubLevel(level, Vec3.atCenterOf(phantomPortPos))
+			.add(0, profile.phantomPortCruiseHeight(), 0);
 	}
 
 	public static Vec3 landingTarget(AirCourierFlightProfile profile,
 		@Nullable PhantomPortBlockEntity phantomPort, @Nullable ServerPlayer player) {
 		if (phantomPort != null) {
-			return landingTarget(profile, phantomPort.getBlockPos());
+			return landingTarget(profile, phantomPort.getLevel(), phantomPort.getBlockPos());
 		}
 		if (player != null) {
 			return playerDeliveryTarget(profile, player);
@@ -38,7 +46,13 @@ public final class AirCourierFlightTargets {
 	}
 
 	public static Vec3 landingTarget(AirCourierFlightProfile profile, BlockPos phantomPortPos) {
-		return Vec3.atCenterOf(phantomPortPos).add(0, profile.phantomPortLandingHeight(), 0);
+		return landingTarget(profile, null, phantomPortPos);
+	}
+
+	public static Vec3 landingTarget(AirCourierFlightProfile profile,
+		@Nullable Level level, BlockPos phantomPortPos) {
+		return SableCompat.projectOutOfSubLevel(level, Vec3.atCenterOf(phantomPortPos))
+			.add(0, profile.phantomPortLandingHeight(), 0);
 	}
 
 	public static double completionDistance(AirCourierFlightProfile profile,
