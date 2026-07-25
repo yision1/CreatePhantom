@@ -242,6 +242,10 @@ final class PhantomPortInventory {
 				carrier));
 	}
 
+	void clearContent() {
+		carrierInventory.setStackInSlot(0, ItemStack.EMPTY);
+	}
+
 	void write(CompoundTag tag, HolderLookup.Provider registries) {
 		tag.put("CarrierInventory", carrierInventory.serializeNBT(registries));
 	}

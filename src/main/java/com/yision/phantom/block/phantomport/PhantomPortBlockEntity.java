@@ -82,6 +82,12 @@ public class PhantomPortBlockEntity extends PackagePortBlockEntity {
 	}
 
 	@Override
+	public void clearContent() {
+		super.clearContent();
+		portInventory.clearContent();
+	}
+
+	@Override
 	public int getComparatorOutput() {
 		return ItemHandlerHelper.calcRedstoneFromInventory(portInventory.combinedHandler());
 	}
