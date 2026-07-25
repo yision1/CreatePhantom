@@ -5,13 +5,12 @@ import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.stockTicker.CraftableBigItemStack;
 import com.simibubi.create.foundation.utility.CreateLang;
 
-import com.yision.fluidlogistics.client.FluidTooltipHelper;
-import com.yision.fluidlogistics.config.Config;
-import com.yision.fluidlogistics.item.CompressedTankItem;
-import com.yision.fluidlogistics.registry.AllItems;
-import com.yision.fluidlogistics.render.FluidSlotAmountRenderer;
-import com.yision.fluidlogistics.util.FluidAmountHelper;
-import com.yision.fluidlogistics.util.IFluidCraftableBigItemStack;
+import com.yision.fluidlogistics.api.packager.PackageResourceCrafting;
+import com.yision.fluidlogistics.api.packager.PackageResourceCraftingData;
+import com.yision.fluidlogistics.api.packager.PackageResourceDisplay;
+import com.yision.fluidlogistics.api.packager.PackageResources;
+import com.yision.fluidlogistics.api.packager.PackageResourceTypes;
+import com.yision.fluidlogistics.api.packager.client.PackageResourceClient;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +20,7 @@ import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.recipe.RecipeIngredientRole;
-import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
@@ -34,28 +33,55 @@ public final class FluidLogisticsTickerLoadedCompat {
 	private FluidLogisticsTickerLoadedCompat() {}
 
 	public static boolean isVirtualFluidStack(ItemStack stack) {
-		return stack.getItem() instanceof CompressedTankItem && CompressedTankItem.isVirtual(stack);
+		return PackageResources.isBootstrapped()
+			&& PackageResources.findType(stack)
+				.map(type -> PackageResourceTypes.FLUID.equals(type.id()))
+				.orElse(false);
+	}
+
+	public static boolean isPackageResourceStack(ItemStack stack) {
+		return PackageResources.isBootstrapped() && PackageResources.findType(stack).isPresent();
 	}
 
 	public static ItemStack virtualTank(FluidStack fluid) {
-		ItemStack tank = new ItemStack(AllItems.COMPRESSED_STORAGE_TANK.get());
-		CompressedTankItem.setFluidVirtual(tank, fluid.copyWithAmount(1));
-		return tank;
+		return PackageResourceTypes.createFluidKey(fluid);
 	}
 
-	public static void renderAmountInTicker(GuiGraphics graphics, int amount) {
-		FluidSlotAmountRenderer.renderInStockKeeper(graphics, amount);
+	public static boolean renderAmountInTicker(GuiGraphics graphics, ItemStack stack, int amount) {
+		return PackageResourceClient.tryRenderStockKeeperAmount(graphics, stack, amount);
 	}
 
-	public static List<Component> tooltipLines(BigItemStack entry, boolean recipeHovered) {
-		ArrayList<Component> lines = new ArrayList<>(FluidTooltipHelper.getVirtualCompressedTankTooltipLines(entry.stack));
+	public static boolean renderHudAmount(GuiGraphics graphics, ItemStack stack, int slotX, int slotY) {
+		if (!PackageResources.isBootstrapped()) return false;
+		var resource = PackageResources.readResource(stack);
+		if (resource.isEmpty()) return false;
+
+		graphics.pose().pushPose();
+		try {
+			graphics.pose().translate(slotX, slotY, 200);
+			return PackageResourceClient.tryRenderStockKeeperAmount(
+				graphics, stack, resource.orElseThrow().amount());
+		} finally {
+			graphics.pose().popPose();
+		}
+	}
+
+	public static List<Component> tooltipLines(
+		BigItemStack entry, boolean recipeHovered, boolean orderHovered
+	) {
+		PackageResourceDisplay.TooltipContext context = recipeHovered
+			? PackageResourceDisplay.TooltipContext.STOCK_KEEPER_CRAFTABLE
+			: orderHovered
+				? PackageResourceDisplay.TooltipContext.STOCK_KEEPER_ORDER
+				: PackageResourceDisplay.TooltipContext.STOCK_KEEPER_INVENTORY;
+		ArrayList<Component> lines = PackageResources.tooltipOf(
+				entry.stack, entry.count, Minecraft.getInstance().options.advancedItemTooltips, context)
+			.map(ArrayList::new)
+			.orElseGet(ArrayList::new);
 		if (lines.isEmpty()) return lines;
-		if (recipeHovered) {
+		if (context == PackageResourceDisplay.TooltipContext.STOCK_KEEPER_CRAFTABLE) {
 			lines.set(0, CreateLang.translateDirect("gui.stock_keeper.craft", lines.getFirst().copy()));
 		}
-		lines.add(1, CreateLang.text("x" + FluidAmountHelper.formatPrecise(entry.count))
-			.style(ChatFormatting.DARK_GRAY)
-			.component());
 		return lines;
 	}
 
@@ -109,8 +135,7 @@ public final class FluidLogisticsTickerLoadedCompat {
 
 		slotView.getIngredients(NeoForgeTypes.FLUID_STACK).forEach(fluid -> {
 			if (fluid.isEmpty()) return;
-			ItemStack virtualTank = new ItemStack(AllItems.COMPRESSED_STORAGE_TANK.get());
-			CompressedTankItem.setFluidVirtual(virtualTank, fluid.copyWithAmount(1));
+			ItemStack virtualTank = PackageResourceTypes.createFluidKey(fluid);
 			candidates.add(new BigItemStack(virtualTank, fluid.getAmount()));
 		});
 
@@ -181,10 +206,9 @@ public final class FluidLogisticsTickerLoadedCompat {
 				.filter(fluid -> !fluid.isEmpty())
 				.findFirst();
 			if (fluidOutput.isPresent()) {
-				ItemStack virtualTank = new ItemStack(AllItems.COMPRESSED_STORAGE_TANK.get());
-				CompressedTankItem.setFluidVirtual(virtualTank, fluidOutput.get().copyWithAmount(1));
+				ItemStack virtualTank = PackageResourceTypes.createFluidKey(fluidOutput.get());
 				return new FluidLogisticsTickerCompat.OutputTarget(
-					virtualTank, Math.max(1, fluidOutput.get().getAmount()), Config.getFluidPerPackage());
+					virtualTank, Math.max(1, fluidOutput.get().getAmount()), PackageResourceTypes.getFluidPerPackage());
 			}
 		}
 
@@ -195,29 +219,25 @@ public final class FluidLogisticsTickerLoadedCompat {
 	}
 
 	public static boolean hasCustomRecipeData(CraftableBigItemStack stack) {
-		return stack instanceof IFluidCraftableBigItemStack data
-			&& data.fluidlogistics$hasCustomRecipeData();
+		return PackageResourceCrafting.has(stack);
 	}
 
 	public static int customOutputCount(CraftableBigItemStack stack) {
-		if (stack instanceof IFluidCraftableBigItemStack data) {
-			return data.fluidlogistics$getCustomOutputCount();
-		}
-		return 0;
+		return PackageResourceCrafting.get(stack)
+			.map(PackageResourceCraftingData::outputCount)
+			.orElse(0);
 	}
 
 	public static int customTransferLimit(CraftableBigItemStack stack) {
-		if (stack instanceof IFluidCraftableBigItemStack data) {
-			return data.fluidlogistics$getCustomTransferLimit();
-		}
-		return 0;
+		return PackageResourceCrafting.get(stack)
+			.map(PackageResourceCraftingData::transferLimit)
+			.orElse(0);
 	}
 
 	public static List<BigItemStack> customRequirements(CraftableBigItemStack stack) {
-		if (stack instanceof IFluidCraftableBigItemStack data) {
-			return data.fluidlogistics$getCustomRequirements();
-		}
-		return List.of();
+		return PackageResourceCrafting.get(stack)
+			.map(PackageResourceCraftingData::requirements)
+			.orElseGet(List::of);
 	}
 
 	public static void setCustomRecipeData(
@@ -226,35 +246,41 @@ public final class FluidLogisticsTickerLoadedCompat {
 		int transferLimit,
 		List<BigItemStack> requirements
 	) {
-		if (stack instanceof IFluidCraftableBigItemStack data) {
-			data.fluidlogistics$setCustomRecipeData(outputCount, transferLimit, requirements);
-		}
+		PackageResourceCrafting.set(
+			stack, new PackageResourceCraftingData(outputCount, transferLimit, requirements));
 	}
 
 	public static int recipeStep(CraftableBigItemStack stack, boolean shift, boolean control) {
-		if (!(stack instanceof IFluidCraftableBigItemStack data)) return 1;
-		int outputCount = Math.max(1, data.fluidlogistics$getCustomOutputCount());
-		if (shift) return Math.max(outputCount, data.fluidlogistics$getCustomTransferLimit());
+		PackageResourceCraftingData data = PackageResourceCrafting.get(stack).orElse(null);
+		if (data == null) return 1;
+		int outputCount = Math.max(1, data.outputCount());
+		if (shift) return Math.max(outputCount, data.transferLimit());
 		if (control) return outputCount * 10;
 		return outputCount;
 	}
 
 	public static int adjustFluidRequestAmount(
-		int currentAmount, boolean forward, boolean shift, boolean control,
+		ItemStack stack, int currentAmount, boolean forward, boolean shift, boolean control,
 		int minAmount, int maxAmount, int steps
 	) {
-		return FluidAmountHelper.adjustFluidRequestAmount(currentAmount, forward, shift, control, minAmount, maxAmount, steps);
+		return PackageResources.adjustAmount(stack, new PackageResourceDisplay.Adjustment(
+				currentAmount, forward, shift, control, minAmount, maxAmount, steps,
+				PackageResourceDisplay.Interaction.STOCK_KEEPER_ORDER))
+			.orElse(currentAmount);
 	}
 
 	public static int adjustStockTickerFluidRequestAmount(
-		int currentAmount, boolean forward, boolean shift, boolean control,
+		ItemStack stack, int currentAmount, boolean forward, boolean shift, boolean control,
 		int minAmount, int maxAmount, int steps
 	) {
-		return FluidAmountHelper.adjustStockTickerFluidRequestAmount(currentAmount, forward, shift, control, minAmount, maxAmount, steps);
+		return PackageResources.adjustAmount(stack, new PackageResourceDisplay.Adjustment(
+				currentAmount, forward, shift, control, minAmount, maxAmount, steps,
+				PackageResourceDisplay.Interaction.STOCK_KEEPER_INVENTORY))
+			.orElse(currentAmount);
 	}
 
 	public static FluidStack getFluidFromVirtualTank(ItemStack stack) {
-		return CompressedTankItem.getFluid(stack);
+		return PackageResourceTypes.getFluid(stack);
 	}
 
 	public static int getCraftableSets(InventorySummary summary, List<BigItemStack> existingOrders,

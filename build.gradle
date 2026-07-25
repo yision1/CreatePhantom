@@ -42,6 +42,7 @@ repositories {
     maven { url = "https://maven.blamejared.com" }
     maven { url = "https://www.cursemaven.com" }
     maven { url = "https://maven.theillusivec4.top/" }
+    maven { url = "https://api.modrinth.com/maven" }
     mavenCentral()
 }
 
@@ -109,8 +110,8 @@ dependencies {
     implementation("com.tterrag.registrate:Registrate:${registrate_version}")
     implementation("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
 
-    compileOnly "curse.maven:create-fluidlogistic-1475079:8131716"
-    localRuntime "curse.maven:create-fluidlogistic-1475079:8131716"
+    compileOnly "maven.modrinth:g4AWLVIr:DFIDhGqQ"
+    localRuntime "maven.modrinth:g4AWLVIr:DFIDhGqQ"
 
     compileOnly("top.theillusivec4.curios:curios-neoforge:${curios_version}:api")
     localRuntime("top.theillusivec4.curios:curios-neoforge:${curios_version}")

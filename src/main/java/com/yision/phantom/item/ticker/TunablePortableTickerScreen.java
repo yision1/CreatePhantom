@@ -610,10 +610,12 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		if (available > 0) {
 			ms.pushPose();
 			ms.translate(0, 0, 190);
-			if (FluidLogisticsTickerCompat.isVirtualFluidStack(entry.stack)) {
-				ms.translate(1, 1, 0);
-				FluidLogisticsTickerCompat.renderAmountInTicker(graphics, available);
-			} else {
+			boolean renderedResourceAmount = false;
+			if (FluidLogisticsTickerCompat.isPackageResourceStack(entry.stack)) {
+				renderedResourceAmount =
+					FluidLogisticsTickerCompat.renderAmountInTicker(graphics, entry.stack, available);
+			}
+			if (!renderedResourceAmount) {
 				graphics.renderItemDecorations(font, entry.stack, 1, 1, "");
 				ms.translate(0, 0, 10);
 				if (available > 1)
@@ -670,10 +672,11 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 				: orderHovered ? itemsToOrder.get(hovered.getSecond())
 				: displayedItems.get(hovered.getFirst()).get(hovered.getSecond());
 
-			if ((recipeHovered || orderHovered) && FluidLogisticsTickerCompat.isVirtualFluidEntry(entry)) {
-				List<Component> fluidTooltip = FluidLogisticsTickerCompat.tooltipLines(entry, recipeHovered);
-				if (!fluidTooltip.isEmpty()) {
-					graphics.renderComponentTooltip(font, fluidTooltip, mouseX, mouseY);
+			if (FluidLogisticsTickerCompat.isPackageResourceEntry(entry)) {
+				List<Component> resourceTooltip =
+					FluidLogisticsTickerCompat.tooltipLines(entry, recipeHovered, orderHovered);
+				if (!resourceTooltip.isEmpty()) {
+					graphics.renderComponentTooltip(font, resourceTooltip, mouseX, mouseY);
 				} else {
 					graphics.renderTooltip(font, entry.stack, mouseX, mouseY);
 				}
@@ -766,7 +769,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		BigItemStack entry = recipeClicked ? recipesToOrder.get(hovered.getSecond())
 			: orderClicked ? itemsToOrder.get(hovered.getSecond())
 			: displayedItems.get(hovered.getFirst()).get(hovered.getSecond());
-		boolean isVirtualFluid = FluidLogisticsTickerCompat.isVirtualFluidStack(entry.stack) && !recipeClicked;
+		boolean isPackageResource = FluidLogisticsTickerCompat.isPackageResourceStack(entry.stack) && !recipeClicked;
 		int transfer = hasShiftDown() ? entry.stack.getMaxStackSize() : hasControlDown() ? 10 : 1;
 
 		if (recipeClicked && entry instanceof CraftableBigItemStack cbis) {
@@ -789,7 +792,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 
 		BigItemStack existing = orderClicked ? entry : getOrderForItem(entry.stack);
 
-		if (isVirtualFluid) {
+		if (isPackageResource) {
 			if (existing == null) {
 				if (!(rmb || orderClicked) && itemsToOrder.size() >= cols)
 					return true;
@@ -801,9 +804,11 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 			int maxAvailable = getLatestSummary().getCountOf(entry.stack);
 			int newAmount = orderClicked
 				? FluidLogisticsTickerCompat.adjustFluidRequestAmount(
-					existing.count, !(rmb || orderClicked), hasShiftDown(), hasControlDown(), 0, Math.max(0, maxAvailable), 1)
+					entry.stack, existing.count, !(rmb || orderClicked), hasShiftDown(), hasControlDown(),
+					0, Math.max(0, maxAvailable), 1)
 				: FluidLogisticsTickerCompat.adjustStockTickerFluidRequestAmount(
-					existing.count, !(rmb || orderClicked), hasShiftDown(), hasControlDown(), 0, Math.max(0, maxAvailable), 1);
+					entry.stack, existing.count, !(rmb || orderClicked), hasShiftDown(), hasControlDown(),
+					0, Math.max(0, maxAvailable), 1);
 			if (newAmount <= 0) {
 				itemsToOrder.remove(existing);
 			} else {
@@ -1009,7 +1014,8 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 			: displayedItems.get(hovered.getFirst()).get(hovered.getSecond());
 		boolean remove = scrollY < 0;
 		int steps = Mth.ceil(Math.abs(scrollY));
-		boolean isVirtualFluidScroll = FluidLogisticsTickerCompat.isVirtualFluidStack(entry.stack) && !recipeClicked;
+		boolean isPackageResourceScroll =
+			FluidLogisticsTickerCompat.isPackageResourceStack(entry.stack) && !recipeClicked;
 		int transfer = steps * (hasControlDown() ? 10 : 1);
 
 		if (recipeClicked && entry instanceof CraftableBigItemStack cbis) {
@@ -1022,7 +1028,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 			return true;
 		}
 
-		if (isVirtualFluidScroll) {
+		if (isPackageResourceScroll) {
 			BigItemStack existing = orderClicked ? entry : getOrderForItem(entry.stack);
 			if (existing == null) {
 				if (remove || itemsToOrder.size() >= cols)
@@ -1033,11 +1039,11 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 			int newAmount;
 			if (orderClicked) {
 				newAmount = FluidLogisticsTickerCompat.adjustFluidRequestAmount(
-					existing.count, !remove, hasShiftDown(), hasControlDown(),
+					entry.stack, existing.count, !remove, hasShiftDown(), hasControlDown(),
 					0, Math.max(0, maxAvailable), steps);
 			} else {
 				newAmount = FluidLogisticsTickerCompat.adjustStockTickerFluidRequestAmount(
-					existing.count, !remove, hasShiftDown(), hasControlDown(),
+					entry.stack, existing.count, !remove, hasShiftDown(), hasControlDown(),
 					0, Math.max(0, maxAvailable), steps);
 			}
 			if (newAmount <= 0) {

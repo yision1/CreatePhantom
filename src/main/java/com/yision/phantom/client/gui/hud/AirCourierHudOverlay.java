@@ -2,6 +2,7 @@ package com.yision.phantom.client.gui.hud;
 
 import com.yision.phantom.config.AllConfigs;
 import com.yision.phantom.config.CPClient.AirCourierHudPlacement;
+import com.yision.phantom.compat.fluidlogistics.FluidLogisticsTickerCompat;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudEntry;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudPayload;
 import com.yision.phantom.logistics.courier.hud.AirCourierPackagePreview;
@@ -140,7 +141,9 @@ public final class AirCourierHudOverlay {
 
 			int slotX = SLOT_X + SLOT_SPACING * slot;
 			graphics.renderItem(stack, slotX, SLOT_Y);
-			graphics.renderItemDecorations(minecraft.font, stack, slotX, SLOT_Y);
+			if (!FluidLogisticsTickerCompat.renderHudAmount(graphics, stack, slotX, SLOT_Y)) {
+				graphics.renderItemDecorations(minecraft.font, stack, slotX, SLOT_Y);
+			}
 		}
 	}
 

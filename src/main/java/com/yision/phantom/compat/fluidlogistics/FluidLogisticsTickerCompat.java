@@ -30,6 +30,10 @@ public final class FluidLogisticsTickerCompat {
 		return isLoaded() && FluidLogisticsTickerLoadedCompat.isVirtualFluidStack(stack);
 	}
 
+	public static boolean isPackageResourceStack(ItemStack stack) {
+		return isLoaded() && FluidLogisticsTickerLoadedCompat.isPackageResourceStack(stack);
+	}
+
 	public static boolean containsVirtualFluid(List<BigItemStack> order) {
 		if (!isLoaded()) return false;
 		for (BigItemStack entry : order) {
@@ -43,18 +47,27 @@ public final class FluidLogisticsTickerCompat {
 		return FluidLogisticsTickerLoadedCompat.virtualTank(fluid);
 	}
 
-	public static void renderAmountInTicker(GuiGraphics graphics, int amount) {
-		if (!isLoaded()) return;
-		FluidLogisticsTickerLoadedCompat.renderAmountInTicker(graphics, amount);
+	public static boolean renderAmountInTicker(GuiGraphics graphics, ItemStack stack, int amount) {
+		return isLoaded() && FluidLogisticsTickerLoadedCompat.renderAmountInTicker(graphics, stack, amount);
 	}
 
-	public static List<Component> tooltipLines(BigItemStack entry, boolean recipeHovered) {
+	public static boolean renderHudAmount(GuiGraphics graphics, ItemStack stack, int slotX, int slotY) {
+		return isLoaded() && FluidLogisticsTickerLoadedCompat.renderHudAmount(graphics, stack, slotX, slotY);
+	}
+
+	public static List<Component> tooltipLines(
+		BigItemStack entry, boolean recipeHovered, boolean orderHovered
+	) {
 		if (!isLoaded()) return List.of();
-		return FluidLogisticsTickerLoadedCompat.tooltipLines(entry, recipeHovered);
+		return FluidLogisticsTickerLoadedCompat.tooltipLines(entry, recipeHovered, orderHovered);
 	}
 
 	public static boolean isVirtualFluidEntry(BigItemStack entry) {
 		return isVirtualFluidStack(entry.stack);
+	}
+
+	public static boolean isPackageResourceEntry(BigItemStack entry) {
+		return isPackageResourceStack(entry.stack);
 	}
 
 	public static boolean hasFluidIngredient(IRecipeSlotsView recipeSlots) {
@@ -114,21 +127,21 @@ public final class FluidLogisticsTickerCompat {
 	}
 
 	public static int adjustFluidRequestAmount(
-		int currentAmount, boolean forward, boolean shift, boolean control,
+		ItemStack stack, int currentAmount, boolean forward, boolean shift, boolean control,
 		int minAmount, int maxAmount, int steps
 	) {
 		if (!isLoaded()) return currentAmount;
 		return FluidLogisticsTickerLoadedCompat.adjustFluidRequestAmount(
-			currentAmount, forward, shift, control, minAmount, maxAmount, steps);
+			stack, currentAmount, forward, shift, control, minAmount, maxAmount, steps);
 	}
 
 	public static int adjustStockTickerFluidRequestAmount(
-		int currentAmount, boolean forward, boolean shift, boolean control,
+		ItemStack stack, int currentAmount, boolean forward, boolean shift, boolean control,
 		int minAmount, int maxAmount, int steps
 	) {
 		if (!isLoaded()) return currentAmount;
 		return FluidLogisticsTickerLoadedCompat.adjustStockTickerFluidRequestAmount(
-			currentAmount, forward, shift, control, minAmount, maxAmount, steps);
+			stack, currentAmount, forward, shift, control, minAmount, maxAmount, steps);
 	}
 
 	public static int getCustomCraftableSets(

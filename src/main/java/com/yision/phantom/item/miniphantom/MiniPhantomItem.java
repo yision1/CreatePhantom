@@ -2,6 +2,7 @@ package com.yision.phantom.item.miniphantom;
 
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.simibubi.create.foundation.item.render.SimpleCustomRenderer;
+import com.yision.phantom.compat.fluidlogistics.FluidLogisticsPackageCompat;
 import com.yision.phantom.entity.courier.AirCourierEntity;
 import com.yision.phantom.item.miniphantom.MiniPhantomMenu;
 import com.yision.phantom.item.miniphantom.MiniPhantomReturnTarget;
@@ -43,6 +44,9 @@ public class MiniPhantomItem extends Item {
 	@Override
 	public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
 		ItemStack stack = player.getItemInHand(usedHand);
+		if (FluidLogisticsPackageCompat.blocksManualOpen(copyCargoPackage(stack))) {
+			return InteractionResultHolder.pass(stack);
+		}
 		if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
 			openMenu(serverPlayer, stack, usedHand);
 		}
