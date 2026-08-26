@@ -144,12 +144,16 @@ public class TunablePortableTickerTransferHandler implements IUniversalRecipeTra
 		CraftableBigItemStack cbis = screen.getRecipeOrderFor(recipe);
 		if (cbis == null) {
 			cbis = new CraftableBigItemStack(result, recipe);
+			// 先核算数量，成功（可合成）才加入订单列表，避免残留数量为 0 的空蓝图
+			if (!screen.requestCraftable(cbis, maxTransfer ? result.getMaxStackSize() : 1))
+				return new RecipeTransferErrorTooltip(CreateLang.translate("gui.stock_keeper.not_in_stock").component());
 			screen.recipesToOrder.add(cbis);
+		} else {
+			screen.requestCraftable(cbis, maxTransfer ? result.getMaxStackSize() : 1);
 		}
 
 		screen.searchBox.setValue("");
 		screen.refreshSearchNextTick = true;
-		screen.requestCraftable(cbis, maxTransfer ? result.getMaxStackSize() : 1);
 		return null;
 	}
 
