@@ -6,10 +6,13 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.compat.Mods;
 import com.simibubi.create.content.logistics.BigItemStack;
+import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelScreen;
 import com.simibubi.create.content.logistics.filter.FilterItemStack;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
 import com.simibubi.create.content.logistics.stockTicker.CraftableBigItemStack;
+import com.simibubi.create.content.logistics.stockTicker.PackageOrder;
 import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts;
+import com.simibubi.create.content.logistics.stockTicker.PackageOrderWithCrafts.CraftingEntry;
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestScreen.SearchSyncMode;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
@@ -41,6 +44,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import mezz.jei.api.runtime.IIngredientFilter;
 import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.data.Couple;
 import net.createmod.catnip.data.Pair;
@@ -62,6 +66,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.Item.TooltipContext;
@@ -100,6 +105,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 
 	public LerpedFloat itemScroll = LerpedFloat.linear().startWithValue(0);
 	public EditBox searchBox;
+	private String previousJEISearchText = "";
 	public AddressSuggestionEditBox addressBox;
 
 	private int itemsX;
@@ -117,6 +123,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 	public List<CategoryEntry> categories = new ArrayList<>();
 	public List<BigItemStack> itemsToOrder = new ArrayList<>();
 	public List<CraftableBigItemStack> recipesToOrder = new ArrayList<>();
+	private boolean canRequestCraftingPackage = false;
 	private InventorySummary forcedEntries = new InventorySummary();
 	private int lastSeenStockVersion = -1;
 	private List<BigItemStack> lastSeenStacks = List.of();
@@ -182,6 +189,13 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		searchBox.setTextColor(0x4A2D31);
 		addWidget(searchBox);
 
+		// 打开界面时从 JEI 恢复上次的搜索词（JEI filter 文本是持久化的）
+		syncJEI(true);
+		if (!searchBox.getValue().isBlank()) {
+			refreshSearchNextTick = true;
+			moveToTopNextTick = true;
+		}
+
 		this.activeChannel = menu.channel;
 		this.activeCards = menu.cards;
 		this.activeSessionNetwork = menu.sessionNetwork;
@@ -210,7 +224,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		if (initial) {
 			playUiSound(SoundEvents.WOOD_HIT, 0.5f, 1.5f);
 			playUiSound(SoundEvents.BOOK_PAGE_TURN, 1, 1);
-			syncRecipeViewers();
+			syncJEI(false);
 		}
 	}
 
@@ -242,6 +256,12 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 			sortAndCategorize(lastSeenStacks);
 			refreshSearchResults(false);
 			revalidateOrders();
+		}
+
+		if (shouldSyncFromJEI()) {
+			refreshSearchNextTick = true;
+			moveToTopNextTick = true;
+			syncJEI(true);
 		}
 
 		if (refreshSearchNextTick) {
@@ -727,13 +747,14 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 			refreshSearchNextTick = true;
 			moveToTopNextTick = true;
 			searchBox.setFocused(true);
-			syncRecipeViewers();
+			syncJEI(false);
 			return true;
 		}
 
 		if (addressBox.isFocused()) {
-			if (addressBox.isHovered())
-				return addressBox.mouseClicked(mouseX, mouseY, button);
+			boolean addressResult = addressBox.mouseClicked(mouseX, mouseY, button);
+			if (addressBox.isHovered() || addressResult)
+				return addressResult;
 			addressBox.setFocused(false);
 		}
 		if (searchBox.isFocused()) {
@@ -1131,7 +1152,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		if (!Objects.equals(value, searchBox.getValue())) {
 			refreshSearchNextTick = true;
 			moveToTopNextTick = true;
-			syncRecipeViewers();
+			syncJEI(false);
 		}
 		return true;
 	}
@@ -1156,7 +1177,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		if (!Objects.equals(value, searchBox.getValue())) {
 			refreshSearchNextTick = true;
 			moveToTopNextTick = true;
-			syncRecipeViewers();
+			syncJEI(false);
 		}
 		return true;
 	}
@@ -1175,9 +1196,64 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 			forcedEntries.add(toOrder.stack.copy(), -1 - Math.max(0, count - toOrder.count));
 		}
 
+		PackageOrderWithCrafts order = PackageOrderWithCrafts.simple(new ArrayList<>(itemsToOrder));
+
+		// 携带配方信息，使目标端（动力合成器/工厂）能按配方自动合成
+		if (canRequestCraftingPackage && !recipesToOrder.isEmpty()) {
+			List<CraftingEntry> craftList = new ArrayList<>();
+			Level level = playerInventory.player.level();
+			for (CraftableBigItemStack cbis : recipesToOrder) {
+				if (!(cbis.recipe instanceof CraftingRecipe cr))
+					continue;
+				int craftedCount = 0;
+				int targetCount = cbis.count / cbis.getOutputCount(level);
+				List<BigItemStack> mutableOrder = BigItemStack.duplicateWrappers(itemsToOrder);
+
+				while (craftedCount < targetCount) {
+					// 按配方把已订物品拆解为“一次合成所需的原料模式”
+					PackageOrder pattern = new PackageOrder(
+						FactoryPanelScreen.convertRecipeToPackageOrderContext(cr, mutableOrder, true));
+					int maxCrafts = targetCount - craftedCount;
+					int availableCrafts = 0;
+
+					boolean itemsExhausted = false;
+					Outer:
+					while (availableCrafts < maxCrafts && !itemsExhausted) {
+						List<BigItemStack> previousSnapshot = BigItemStack.duplicateWrappers(mutableOrder);
+						itemsExhausted = true;
+						Pattern:
+						for (BigItemStack patternStack : pattern.stacks()) {
+							if (patternStack.stack.isEmpty())
+								continue;
+							for (BigItemStack ordered : mutableOrder) {
+								if (!ItemStack.isSameItemSameComponents(ordered.stack, patternStack.stack))
+									continue;
+								if (ordered.count == 0)
+									continue;
+								ordered.count -= 1;
+								itemsExhausted = false;
+								continue Pattern;
+							}
+							mutableOrder = previousSnapshot;
+							break Outer;
+						}
+						availableCrafts++;
+					}
+
+					if (availableCrafts == 0)
+						break;
+
+					craftList.add(new CraftingEntry(pattern, availableCrafts));
+					craftedCount += availableCrafts;
+				}
+			}
+			if (!craftList.isEmpty())
+				order = new PackageOrderWithCrafts(order.orderedStacks(), craftList);
+		}
+
 		CatnipServices.NETWORK.sendToServer(
 			new TunablePortableTickerSendOrderPacket(menu.locator, activeChannel, activeSessionNetwork,
-				PackageOrderWithCrafts.simple(new ArrayList<>(itemsToOrder)), addressBox.getValue()));
+				order, addressBox.getValue()));
 		saveRequestedAddressForActiveChannel(addressBox.getValue());
 		itemsToOrder = new ArrayList<>();
 		recipesToOrder = new ArrayList<>();
@@ -1241,16 +1317,16 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		return candidates;
 	}
 
-	public void requestCraftable(CraftableBigItemStack cbis, int requestedDifference) {
+	public boolean requestCraftable(CraftableBigItemStack cbis, int requestedDifference) {
 		if (FluidLogisticsTickerCompat.hasCustomRecipeData(cbis)) {
 			handleCustomFluidCraftableRequest(cbis, requestedDifference);
-			return;
+			return true;
 		}
 		boolean takeOrdersAway = requestedDifference < 0;
 		if (takeOrdersAway)
 			requestedDifference = Math.max(-cbis.count, requestedDifference);
 		if (requestedDifference == 0)
-			return;
+			return true;
 
 		InventorySummary availableItems = getPlanningSummary();
 		Function<ItemStack, Integer> countModifier = stack -> {
@@ -1271,8 +1347,8 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		int adjustToRecipeAmount = Mth.ceil(Math.abs(requestedDifference) / (float) outputCount) * outputCount;
 		int maxCraftable = Math.min(adjustToRecipeAmount, craftingResult.getFirst());
 
-		if (maxCraftable == 0)
-			return;
+		if (maxCraftable <= 0)
+			return false;
 
 		cbis.count += takeOrdersAway ? -maxCraftable : maxCraftable;
 
@@ -1306,6 +1382,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 			recipesToOrder.remove(cbis);
 
 		updateCraftableAmounts();
+		return true;
 	}
 
 	public CraftableBigItemStack getRecipeOrderFor(Recipe<?> recipe) {
@@ -1459,6 +1536,7 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		for (CraftableBigItemStack cbis : recipesToOrder) {
 			if (FluidLogisticsTickerCompat.hasCustomRecipeData(cbis)) {
 				updateCraftableAmountsWithCustomEntries();
+				canRequestCraftingPackage = false;
 				return;
 			}
 		}
@@ -1487,6 +1565,13 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 				}
 			}
 		}
+
+		// 仅当所有已订物品都被配方消耗完毕时，才允许在包裹中携带配方信息
+		canRequestCraftingPackage = false;
+		for (BigItemStack ordered : itemsToOrder)
+			if (usedItems.getCountOf(ordered.stack) != ordered.count)
+				return;
+		canRequestCraftingPackage = true;
 	}
 
 	private Pair<Integer, List<List<BigItemStack>>> maxCraftable(CraftableBigItemStack cbis, InventorySummary summary,
@@ -1533,6 +1618,10 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		}
 
 		validEntriesByIngredient = resolveIngredientAmounts(validEntriesByIngredient);
+
+		// 没有任何可用原料时直接返回 0，避免 minCount 保持 Integer.MAX_VALUE 导致溢出为负数
+		if (validEntriesByIngredient.isEmpty())
+			return Pair.of(0, List.of());
 
 		int minCount = Integer.MAX_VALUE;
 		for (List<BigItemStack> list : validEntriesByIngredient) {
@@ -1704,22 +1793,39 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		return CreateLang.translate("gui.stock_keeper.no_search_results").component();
 	}
 
-	private void syncRecipeViewers() {
-		if (searchBox == null || !Mods.JEI.isLoaded())
+	/**
+	 * JEI 搜索框获得焦点且内容变化时，需要把 JEI 的搜索词同步回本界面。
+	 */
+	private boolean shouldSyncFromJEI() {
+		if (!Mods.JEI.isLoaded() || CPJEI.runtime == null)
+			return false;
+		try {
+			boolean hasFocus = CPJEI.runtime.getIngredientListOverlay().hasKeyboardFocus();
+			return hasFocus && !previousJEISearchText.equals(CPJEI.runtime.getIngredientFilter().getFilterText());
+		} catch (Throwable t) {
+			return false;
+		}
+	}
+
+	/**
+	 * 与 JEI 搜索框双向同步（对齐 Create 原版 StockKeeperRequestScreen）。
+	 * fromJei=true 时把 JEI 的 filter 文本拉回本界面（含重开 UI 后的恢复）；
+	 * fromJei=false 时把本界面的搜索词推给 JEI。
+	 */
+	private void syncJEI(boolean fromJei) {
+		if (!Mods.JEI.isLoaded() || CPJEI.runtime == null)
 			return;
-		if (AllConfigs.client().syncRecipeViewerSearch.get() == SearchSyncMode.NONE)
+		SearchSyncMode mode = AllConfigs.client().syncRecipeViewerSearch.get();
+		if (mode == SearchSyncMode.NONE)
 			return;
 		try {
-			Object runtime = CPJEI.runtime;
-			if (runtime == null) {
-				Class<?> jeiClass = Class.forName("com.simibubi.create.compat.jei.CreateJEI");
-				runtime = jeiClass.getField("runtime").get(null);
+			IIngredientFilter filter = CPJEI.runtime.getIngredientFilter();
+			if (mode.isBothOr(SearchSyncMode.SYNC_FROM_JEI) && fromJei) {
+				previousJEISearchText = filter.getFilterText();
+				searchBox.setValue(previousJEISearchText);
+			} else if (mode.isBothOr(SearchSyncMode.SYNC_FROM_STOCK_KEEPER) && !fromJei) {
+				filter.setFilterText(Objects.requireNonNullElse(searchBox.getValue(), ""));
 			}
-			if (runtime == null)
-				return;
-			Object filter = runtime.getClass().getMethod("getIngredientFilter").invoke(runtime);
-			filter.getClass().getMethod("setFilterText", String.class)
-				.invoke(filter, Objects.requireNonNullElse(searchBox.getValue(), ""));
 		} catch (Throwable t) {
 			CreatePhantom.LOGGER.debug("JEI search sync failed", t);
 		}
