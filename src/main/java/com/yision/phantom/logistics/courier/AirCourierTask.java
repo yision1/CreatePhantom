@@ -32,8 +32,10 @@ public final class AirCourierTask {
 	public static final double PORT_REENTRY_HEIGHT = 8.0;
 	public static final double PLAYER_REENTRY_DISTANCE = 24.0;
 	public static final double PLAYER_REENTRY_HEIGHT = 4.0;
+	public static final int PLAYER_REACQUIRE_COOLDOWN_TICKS = 40;
 	public static final int DESTINATION_UNLOADED_TIMEOUT = 600;
 	public static final int RECOVERY_WATCHDOG_TICKS = 2400;
+	private static final double PLAYER_PURSUIT_SPEED_MARGIN = 0.10;
 
 	private static final AirCourierFlightProfile FLIGHT = AirCourierFlightProfile.DEFAULT;
 
@@ -236,7 +238,8 @@ public final class AirCourierTask {
 
 		Vec3 approachGate = getApproachGate(target.landingTarget(), target.playerTarget());
 		AirCourierFlightPlanner.FlightStep step = AirCourierFlightPlanner.cruise(FLIGHT,
-			position, motion, approachGate, target.landingTarget(), phaseTicks, target.playerTarget());
+			position, motion, approachGate, target.landingTarget(), phaseTicks, target.playerTarget(),
+			getPlayerPursuitSpeed(target.player()));
 		motion = step.motion();
 
 		if (step.complete()) {
@@ -270,7 +273,8 @@ public final class AirCourierTask {
 		Vec3 landingTarget = getSmoothedLandingTarget(target.landingTarget(), target.playerTarget());
 
 		AirCourierFlightPlanner.FlightStep step = AirCourierFlightPlanner.landing(FLIGHT,
-			position, motion, landingTarget, target.completionDistance(), target.playerTarget());
+			position, motion, landingTarget, target.completionDistance(), target.playerTarget(),
+			getPlayerPursuitSpeed(target.player()));
 		motion = step.motion();
 
 		if (step.complete() || (target.player() != null && hasReachedPlayer(target.player()))) {
@@ -327,11 +331,24 @@ public final class AirCourierTask {
 	}
 
 	private boolean shouldTeleportNearTarget(FlightTarget target) {
+		boolean differentDimension = !target.level().dimension().equals(currentDimension);
+		if (teleportedNearTarget && target.playerTarget()) {
+			return differentDimension || phaseTicks >= PLAYER_REACQUIRE_COOLDOWN_TICKS
+				&& position.distanceTo(target.landingTarget()) > LONG_ROUTE_REMAINING_DISTANCE;
+		}
 		if (teleportedNearTarget || deliveryElapsedTicks < LONG_ROUTE_CHECK_TICKS) {
 			return false;
 		}
-		return !target.level().dimension().equals(currentDimension)
+		return differentDimension
 			|| position.distanceTo(target.landingTarget()) > LONG_ROUTE_REMAINING_DISTANCE;
+	}
+
+	private double getPlayerPursuitSpeed(@Nullable ServerPlayer player) {
+		if (player == null)
+			return 0;
+		Vec3 previousPosition = new Vec3(player.xo, player.yo, player.zo);
+		double playerSpeed = player.position().distanceTo(previousPosition);
+		return playerSpeed + PLAYER_PURSUIT_SPEED_MARGIN;
 	}
 
 	private boolean isDestinationAvailable(FlightTarget target) {

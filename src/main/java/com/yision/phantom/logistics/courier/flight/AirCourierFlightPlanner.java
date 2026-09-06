@@ -73,7 +73,7 @@ public final class AirCourierFlightPlanner {
 
 	public static FlightStep cruise(AirCourierFlightProfile profile,
 		Vec3 position, Vec3 currentMotion, Vec3 approachGate, Vec3 landingTarget,
-		int phaseTicks, boolean playerTarget) {
+		int phaseTicks, boolean playerTarget, double minimumSpeed) {
 		double distanceToGate = approachGate.distanceTo(position);
 		double distanceToLanding = landingTarget.distanceTo(position);
 		double horizontalToLanding = AirCourierFlightMath.horizontalDistance(position, landingTarget);
@@ -82,7 +82,7 @@ public final class AirCourierFlightPlanner {
 			profile.cruiseCurveNear(), profile.cruiseCurveFar(),
 			Math.max(0, profile.cruiseStraightenTicks() - phaseTicks));
 		Vec3 motion = steerTowards(position, currentMotion, approachGate,
-			profile.cruiseSpeed(), curveAmount, profile.cruiseTurnDegrees());
+			Math.max(profile.cruiseSpeed(), minimumSpeed), curveAmount, profile.cruiseTurnDegrees());
 
 		boolean complete = distanceToGate < profile.approachGateNearDistance()
 			|| (horizontalToLanding < profile.approachGateHorizontalThreshold() && position.y > landingTarget.y)
@@ -93,12 +93,12 @@ public final class AirCourierFlightPlanner {
 
 	public static FlightStep landing(AirCourierFlightProfile profile,
 		Vec3 position, Vec3 currentMotion, Vec3 landingTarget,
-		double completionDistance, boolean playerTarget) {
+		double completionDistance, boolean playerTarget, double minimumSpeed) {
 		double distance = landingTarget.distanceTo(position);
 		double normalizedDistance = Math.max(0.0, distance - completionDistance);
 
 		double speedFactor = Mth.clamp(normalizedDistance / profile.landingDecelerationRange(), 0.0, 1.0);
-		double speed = Mth.lerp(speedFactor, profile.landingMinSpeed(), profile.landingSpeed());
+		double speed = Math.max(Mth.lerp(speedFactor, profile.landingMinSpeed(), profile.landingSpeed()), minimumSpeed);
 
 		double curveAmount = distanceResponsiveCurve(profile, normalizedDistance,
 			profile.landingCurveNear(), profile.landingCurveFar(), 0);
