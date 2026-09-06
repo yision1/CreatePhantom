@@ -1,5 +1,6 @@
 package com.yision.phantom.item.ticker;
 
+import com.simibubi.create.Create;
 import com.yision.phantom.item.ticker.TunablePortableTickerItem;
 import com.yision.phantom.item.ticker.access.TunablePortableTickerLocator;
 import com.yision.phantom.registry.AllMenuTypes;
@@ -28,6 +29,8 @@ public class TunablePortableTickerMenu extends AbstractContainerMenu {
 	public final List<ItemStack> categories;
 	public final String initialAddress;
 	public final Set<Integer> hiddenCategories;
+	public boolean isAdmin;
+	public boolean isLocked;
 
 	public TunablePortableTickerMenu(int id, Inventory playerInventory) {
 		this(id, playerInventory, TunablePortableTickerLocator.findPreferred(playerInventory.player), 0);
@@ -37,6 +40,8 @@ public class TunablePortableTickerMenu extends AbstractContainerMenu {
 		this(id, playerInventory,
 			TunablePortableTickerLocator.STREAM_CODEC.decode(extraData),
 			ByteBufCodecs.INT.decode(extraData));
+		this.isAdmin = extraData.readBoolean();
+		this.isLocked = extraData.readBoolean();
 	}
 
 	public TunablePortableTickerMenu(int id, Inventory playerInventory, TunablePortableTickerLocator locator,
@@ -53,6 +58,7 @@ public class TunablePortableTickerMenu extends AbstractContainerMenu {
 		this.locator = locator;
 		this.channel = channel;
 		this.sessionNetwork = sessionNetwork;
+		refreshNetworkState(player);
 
 		ItemStack resolved = locator.resolve(player);
 		this.tickerStack = resolved.getItem() instanceof TunablePortableTickerItem ? resolved : ItemStack.EMPTY;
@@ -108,14 +114,25 @@ public class TunablePortableTickerMenu extends AbstractContainerMenu {
 			return false;
 		channel = newChannel;
 		sessionNetwork = newNetwork;
+		refreshNetworkState(player);
 		TunablePortableTickerItem.setSelectedChannel(resolved, newChannel);
 		return true;
 	}
 
 	public static void writeMenuData(RegistryFriendlyByteBuf buffer, TunablePortableTickerLocator locator,
-		int channel) {
+		int channel, ServerPlayer player) {
 		TunablePortableTickerLocator.STREAM_CODEC.encode(buffer, locator);
 		ByteBufCodecs.INT.encode(buffer, channel);
+		UUID network = TunablePortableTickerItem.networkFromChannel(locator.resolve(player), channel);
+		buffer.writeBoolean(network != null && Create.LOGISTICS.isLockable(network)
+			&& Create.LOGISTICS.mayAdministrate(network, player));
+		buffer.writeBoolean(network != null && Create.LOGISTICS.isLocked(network));
+	}
+
+	private void refreshNetworkState(Player player) {
+		isAdmin = sessionNetwork != null && Create.LOGISTICS.isLockable(sessionNetwork)
+			&& Create.LOGISTICS.mayAdministrate(sessionNetwork, player);
+		isLocked = sessionNetwork != null && Create.LOGISTICS.isLocked(sessionNetwork);
 	}
 
 	public static TunablePortableTickerMenu createOnClient(int id, Inventory playerInventory,

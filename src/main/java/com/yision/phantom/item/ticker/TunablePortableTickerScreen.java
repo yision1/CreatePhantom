@@ -28,6 +28,7 @@ import com.yision.phantom.CreatePhantom;
 import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
 import com.yision.phantom.item.ticker.TunablePortableTickerItem;
 import com.yision.phantom.network.ticker.TunablePortableTickerHiddenCategoriesPacket;
+import com.yision.phantom.network.ticker.TunablePortableTickerLockPacket;
 import com.yision.phantom.network.ticker.TunablePortableTickerSelectChannelPacket;
 import com.yision.phantom.network.ticker.TunablePortableTickerSendOrderPacket;
 import java.util.ArrayList;
@@ -113,6 +114,9 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 	private int orderY;
 	private int windowWidth;
 	private int windowHeight;
+	private int jeiSyncX;
+	private int lockX;
+	private int besideSearchButtonY;
 	private final Map<UUID, String> requestedAddresses = new HashMap<>();
 	private int emptyTicks;
 	private int successTicks;
@@ -181,6 +185,9 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		itemsX = x + (windowWidth - cols * colWidth) / 2 + 1;
 		itemsY = y + 33;
 		orderY = y + windowHeight - 72;
+		jeiSyncX = x + 25;
+		lockX = x + 186;
+		besideSearchButtonY = y + 18;
 
 		searchBox = new EditBox(new NoShadowFontWrapper(font), x + 71, y + 22, 100, 9,
 			CreateLang.translateDirect("gui.stock_keeper.search_items"));
@@ -494,6 +501,12 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		if (searchBox.getValue().isBlank() && !searchBox.isFocused())
 			graphics.drawString(font, searchBox.getMessage(),
 				x + windowWidth / 2 - font.width(searchBox.getMessage()) / 2, searchBox.getY(), 0xff4A2D31, false);
+		if (Mods.JEI.isLoaded())
+			AllConfigs.client().syncRecipeViewerSearch.get().buttonTexture
+				.render(graphics, jeiSyncX, besideSearchButtonY);
+		if (menu.isAdmin)
+			(menu.isLocked ? AllGuiTextures.STOCK_KEEPER_REQUEST_LOCKED : AllGuiTextures.STOCK_KEEPER_REQUEST_UNLOCKED)
+				.render(graphics, lockX, besideSearchButtonY);
 
 		renderTroubleshooting(graphics, x);
 		renderItemGrid(graphics, hovered, x, y, currentScroll);
@@ -719,6 +732,28 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 				mouseX, mouseY);
 		}
 
+		if (itemScroll.getValue(partialTicks) < 1 && mouseY > besideSearchButtonY
+			&& mouseY <= besideSearchButtonY + 15) {
+			if (Mods.JEI.isLoaded() && mouseX > jeiSyncX && mouseX <= jeiSyncX + 15) {
+				SearchSyncMode mode = AllConfigs.client().syncRecipeViewerSearch.get();
+				String key = "gui.createphantom.tunable_portable_ticker.jei_sync." + mode.getSerializedName();
+				graphics.renderComponentTooltip(font, List.of(
+					Component.translatable(key),
+					Component.translatable(key + ".description").withStyle(ChatFormatting.GRAY),
+					Component.translatable("gui.createphantom.tunable_portable_ticker.click_to_cycle")
+						.withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)), mouseX, mouseY);
+			}
+			if (menu.isAdmin && mouseX > lockX && mouseX <= lockX + 15) {
+				graphics.renderComponentTooltip(font, List.of(
+					CreateLang.translate(menu.isLocked ? "gui.stock_keeper.network_locked" : "gui.stock_keeper.network_open")
+						.component(),
+					CreateLang.translate("gui.stock_keeper.network_lock_tip").style(ChatFormatting.GRAY).component(),
+					CreateLang.translate("gui.stock_keeper.network_lock_tip_1").style(ChatFormatting.GRAY).component(),
+					CreateLang.translate("gui.stock_keeper.network_lock_tip_2")
+						.style(ChatFormatting.DARK_GRAY).style(ChatFormatting.ITALIC).component()), mouseX, mouseY);
+			}
+		}
+
 		int hoveredChannel = getClickedChannel(mouseX, mouseY);
 		if (hoveredChannel != -1)
 			renderChannelTooltip(graphics, hoveredChannel, mouseX, mouseY);
@@ -728,6 +763,24 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
 		boolean lmb = button == GLFW.GLFW_MOUSE_BUTTON_LEFT;
 		boolean rmb = button == GLFW.GLFW_MOUSE_BUTTON_RIGHT;
+		if (itemScroll.getChaseTarget() == 0 && lmb && mouseY > besideSearchButtonY
+			&& mouseY <= besideSearchButtonY + 15) {
+			if (Mods.JEI.isLoaded() && mouseX > jeiSyncX && mouseX <= jeiSyncX + 15) {
+				SearchSyncMode.cycleConfig();
+				refreshSearchNextTick = true;
+				moveToTopNextTick = true;
+				syncJEI(false);
+				playUiSound(SoundEvents.UI_BUTTON_CLICK.value(), 1, 1);
+				return true;
+			}
+			if (menu.isAdmin && mouseX > lockX && mouseX <= lockX + 15) {
+				menu.isLocked = !menu.isLocked;
+				CatnipServices.NETWORK.sendToServer(new TunablePortableTickerLockPacket(
+					menu.locator, activeChannel, activeSessionNetwork, menu.isLocked));
+				playUiSound(SoundEvents.UI_BUTTON_CLICK.value(), 1, 1);
+				return true;
+			}
+		}
 		if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
 			int clickedChannel = getClickedChannel(mouseX, mouseY);
 			if (clickedChannel >= 0 && clickedChannel < TunablePortableTickerItem.MAX_CHANNELS && clickedChannel != activeChannel) {
@@ -891,6 +944,10 @@ public class TunablePortableTickerScreen extends AbstractSimiContainerScreen<Tun
 		ItemStack card = getVisibleCard(channel);
 		activeSessionNetwork = StorageChannelExtensionCardItem.networkFromStack(card);
 		activeCategories = card.isEmpty() ? List.of() : StorageChannelExtensionCardItem.loadCategoriesFromStack(card);
+		menu.channel = channel;
+		menu.sessionNetwork = activeSessionNetwork;
+		menu.isAdmin = false;
+		menu.isLocked = false;
 		hiddenCategories.clear();
 		if (activeSessionNetwork != null)
 			hiddenCategories.addAll(TunablePortableTickerItem.loadHiddenCategories(menu.tickerStack,

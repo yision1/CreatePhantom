@@ -221,7 +221,7 @@ public class TunablePortableTickerItem extends Item {
 			serverPlayer.openMenu(new SimpleMenuProvider(
 				(id, inv, p) -> new TunablePortableTickerMenu(id, inv, locator, finalChannel),
 				Component.translatable("item.createphantom.tunable_portable_ticker")),
-				buffer -> TunablePortableTickerMenu.writeMenuData(buffer, locator, finalChannel));
+				buffer -> TunablePortableTickerMenu.writeMenuData(buffer, locator, finalChannel, serverPlayer));
 		}
 
 		return InteractionResultHolder.success(stack);

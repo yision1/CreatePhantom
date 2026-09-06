@@ -4,6 +4,7 @@ import com.yision.phantom.item.ticker.TunablePortableTickerMenu;
 import com.yision.phantom.item.ticker.access.TunablePortableTickerLocator;
 import com.yision.phantom.network.AllPackets;
 import net.createmod.catnip.net.base.ServerboundPacketPayload;
+import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -21,8 +22,10 @@ public record TunablePortableTickerSelectChannelPacket(TunablePortableTickerLoca
 	public void handle(ServerPlayer player) {
 		if (player == null)
 			return;
-		if (player.containerMenu instanceof TunablePortableTickerMenu menu && menu.locator.equals(locator))
-			menu.selectChannel(player, channel);
+		if (player.containerMenu instanceof TunablePortableTickerMenu menu && menu.locator.equals(locator)
+			&& menu.selectChannel(player, channel))
+			CatnipServices.NETWORK.sendToClient(player, new TunablePortableTickerNetworkStatePacket(
+				locator, menu.channel, menu.sessionNetwork, menu.isAdmin, menu.isLocked));
 	}
 
 	@Override

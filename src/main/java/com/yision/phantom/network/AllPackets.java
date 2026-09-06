@@ -7,6 +7,8 @@ import com.yision.phantom.network.ticker.TunablePortableTickerCardEditPacket;
 import com.yision.phantom.network.ticker.TunablePortableTickerCardRefundPacket;
 import com.yision.phantom.network.ticker.TunablePortableTickerCardSlotPacket;
 import com.yision.phantom.network.ticker.TunablePortableTickerHiddenCategoriesPacket;
+import com.yision.phantom.network.ticker.TunablePortableTickerLockPacket;
+import com.yision.phantom.network.ticker.TunablePortableTickerNetworkStatePacket;
 import com.yision.phantom.network.ticker.TunablePortableTickerOpenPacket;
 import com.yision.phantom.network.ticker.TunablePortableTickerRequestPacket;
 import com.yision.phantom.network.ticker.TunablePortableTickerSelectChannelPacket;
@@ -31,7 +33,10 @@ public enum AllPackets implements BasePacketPayload.PacketTypeProvider {
 	TUNABLE_PORTABLE_TICKER_CARD_REFUND(TunablePortableTickerCardRefundPacket.class, TunablePortableTickerCardRefundPacket.STREAM_CODEC),
 	TUNABLE_PORTABLE_TICKER_CARD_SLOT(TunablePortableTickerCardSlotPacket.class, TunablePortableTickerCardSlotPacket.STREAM_CODEC),
 	TUNABLE_PORTABLE_TICKER_SELECT_CHANNEL(TunablePortableTickerSelectChannelPacket.class, TunablePortableTickerSelectChannelPacket.STREAM_CODEC),
-	AIR_COURIER_HUD(AirCourierHudPacket.class, AirCourierHudPacket.STREAM_CODEC);
+	AIR_COURIER_HUD(AirCourierHudPacket.class, AirCourierHudPacket.STREAM_CODEC),
+	TUNABLE_PORTABLE_TICKER_LOCK(TunablePortableTickerLockPacket.class, TunablePortableTickerLockPacket.STREAM_CODEC),
+	TUNABLE_PORTABLE_TICKER_NETWORK_STATE(TunablePortableTickerNetworkStatePacket.class,
+		TunablePortableTickerNetworkStatePacket.STREAM_CODEC);
 
 	private final CatnipPacketRegistry.PacketType<?> type;
 
