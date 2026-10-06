@@ -39,7 +39,6 @@
   "gui.createphantom.tunable_portable_ticker.card_slot": "Storage Channel Extension Card",
   "gui.createphantom.tunable_portable_ticker.card_slot_tip": "Only storage channel extension cards can be inserted here",
   "gui.createphantom.tunable_portable_ticker.card_name": "Extension Card Note",
-  "gui.createphantom.tunable_portable_ticker.unlinked_card_tip": "This extension card contains no data",
   "gui.createphantom.tunable_portable_ticker.click_to_cycle": "Click to cycle",
   "gui.createphantom.tunable_portable_ticker.jei_sync.none": "No Synchronisation",
   "gui.createphantom.tunable_portable_ticker.jei_sync.none.description": "Portable Stock Ticker and Recipe Viewer searches are kept independent",

@@ -2,7 +2,6 @@ package com.yision.phantom.item.miniphantom;
 
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.logistics.box.PackageItem;
-import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.registry.AllAttachmentTypes;
 import com.yision.phantom.registry.AllItems;
 import com.yision.phantom.registry.AllMenuTypes;

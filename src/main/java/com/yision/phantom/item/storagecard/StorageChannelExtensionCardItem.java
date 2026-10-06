@@ -43,7 +43,7 @@ public class StorageChannelExtensionCardItem extends Item {
 	}
 
 	public static boolean isLinked(ItemStack stack) {
-		return stack.has(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ);
+		return networkFromStack(stack) != null;
 	}
 
 	@Nullable

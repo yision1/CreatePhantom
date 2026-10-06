@@ -1,7 +1,7 @@
 package com.yision.phantom;
 
 import com.yision.phantom.client.AllKeys;
-import com.yision.phantom.client.TunablePortableTickerKeyHandler;
+import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerKeyHandler;
 import com.yision.phantom.client.gui.hud.AirCourierHudOverlay;
 import com.yision.phantom.config.AllConfigs;
 import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
@@ -9,7 +9,7 @@ import com.yision.phantom.ponder.CreatePhantomPonderPlugin;
 import com.yision.phantom.registry.AllEntityTypes;
 import com.yision.phantom.registry.AllItems;
 import com.yision.phantom.client.render.AirCourierEntityRenderer;
-import com.yision.phantom.item.ticker.TunablePortableTickerScreen;
+import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerScreen;
 import net.createmod.catnip.config.ui.BaseConfigScreen;
 import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraft.client.Minecraft;

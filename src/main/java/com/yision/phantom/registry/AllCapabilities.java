@@ -1,7 +1,6 @@
 package com.yision.phantom.registry;
 
 import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
-import com.yision.phantom.registry.AllBlockEntityTypes;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 

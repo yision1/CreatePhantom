@@ -9,7 +9,7 @@ import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry;
 import com.yision.phantom.config.AllConfigs;
 import com.yision.phantom.logistics.courier.AirCourierTaskManager;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
-import com.yision.phantom.item.ticker.TunablePortableTickerSession;
+import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerSession;
 import com.yision.phantom.network.AllPackets;
 import com.yision.phantom.registry.AllAttachmentTypes;
 import com.yision.phantom.registry.AllBlockEntityTypes;

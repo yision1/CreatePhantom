@@ -5,7 +5,7 @@ import com.tterrag.registrate.util.entry.ItemEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
-import com.yision.phantom.item.ticker.TunablePortableTickerItem;
+import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerItem;
 import static com.yision.phantom.CreatePhantom.REGISTRATE;
 
 public final class AllItems {

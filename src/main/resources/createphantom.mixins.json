@@ -4,7 +4,15 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "BeltBlockMixin",
-    "BeltInventoryMixin"
+    "BeltInventoryMixin",
+    "StockKeeperRequestMenuMixin",
+    "BlockEntityConfigurationPacketMixin",
+    "ConnectionMixin",
+    "LevelMixin"
+  ],
+  "client": [
+    "client.AddressEditBoxAccessor",
+    "client.StockKeeperRequestScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

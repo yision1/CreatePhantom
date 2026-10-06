@@ -4,8 +4,6 @@ import com.simibubi.create.content.logistics.box.PackageItem;
 import com.simibubi.create.foundation.item.render.SimpleCustomRenderer;
 import com.yision.phantom.compat.fluidlogistics.FluidLogisticsPackageCompat;
 import com.yision.phantom.entity.courier.AirCourierEntity;
-import com.yision.phantom.item.miniphantom.MiniPhantomMenu;
-import com.yision.phantom.item.miniphantom.MiniPhantomReturnTarget;
 import com.yision.phantom.registry.AllAttachmentTypes;
 import com.yision.phantom.registry.AllDataComponents;
 import com.yision.phantom.registry.AllItems;

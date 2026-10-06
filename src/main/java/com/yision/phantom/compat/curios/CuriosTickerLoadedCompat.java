@@ -1,6 +1,6 @@
 package com.yision.phantom.compat.curios;
 
-import com.yision.phantom.item.ticker.TunablePortableTickerItem;
+import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerItem;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.world.entity.player.Player;
