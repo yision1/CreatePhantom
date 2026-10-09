@@ -24,14 +24,10 @@ public final class AirCourierFlightTargets {
 		return Vec3.ZERO;
 	}
 
-	public static Vec3 cruiseTarget(AirCourierFlightProfile profile, BlockPos phantomPortPos) {
-		return cruiseTarget(profile, null, phantomPortPos);
-	}
-
 	public static Vec3 cruiseTarget(AirCourierFlightProfile profile,
 		@Nullable Level level, BlockPos phantomPortPos) {
-		return SableCompat.projectOutOfSubLevel(level, Vec3.atCenterOf(phantomPortPos))
-			.add(0, profile.phantomPortCruiseHeight(), 0);
+		return SableCompat.projectOutOfSubLevel(level,
+			Vec3.atCenterOf(phantomPortPos).add(0, profile.phantomPortCruiseHeight(), 0));
 	}
 
 	public static Vec3 landingTarget(AirCourierFlightProfile profile,
@@ -45,22 +41,10 @@ public final class AirCourierFlightTargets {
 		return Vec3.ZERO;
 	}
 
-	public static Vec3 landingTarget(AirCourierFlightProfile profile, BlockPos phantomPortPos) {
-		return landingTarget(profile, null, phantomPortPos);
-	}
-
 	public static Vec3 landingTarget(AirCourierFlightProfile profile,
 		@Nullable Level level, BlockPos phantomPortPos) {
-		return SableCompat.projectOutOfSubLevel(level, Vec3.atCenterOf(phantomPortPos))
-			.add(0, profile.phantomPortLandingHeight(), 0);
-	}
-
-	public static double completionDistance(AirCourierFlightProfile profile,
-		@Nullable PhantomPortBlockEntity phantomPort, @Nullable ServerPlayer player) {
-		if (phantomPort != null) {
-			return profile.phantomPortCompletionDistance();
-		}
-		return profile.playerCompletionDistance();
+		return SableCompat.projectOutOfSubLevel(level,
+			Vec3.atCenterOf(phantomPortPos).add(0, profile.phantomPortLandingHeight(), 0));
 	}
 
 	public static Vec3 playerDeliveryTarget(AirCourierFlightProfile profile, ServerPlayer player) {

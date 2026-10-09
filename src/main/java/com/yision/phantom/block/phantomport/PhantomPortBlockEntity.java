@@ -118,18 +118,6 @@ public class PhantomPortBlockEntity extends PackagePortBlockEntity {
 		return portInventory.canReceiveCourier(box);
 	}
 
-	public boolean receiveCourier(ItemStack box) {
-		return portInventory.receiveCourier(box);
-	}
-
-	public boolean canReceivePackage(ItemStack box) {
-		return portInventory.canReceivePackage(box);
-	}
-
-	public boolean receivePackage(ItemStack box) {
-		return portInventory.receivePackage(box);
-	}
-
 	public boolean canReceiveCarrier() {
 		return portInventory.canReceiveCarrier();
 	}
@@ -138,28 +126,12 @@ public class PhantomPortBlockEntity extends PackagePortBlockEntity {
 		return portInventory.receiveCarrier();
 	}
 
-	public boolean receivePackageAndScheduleCarrierReturnToPlayer(ItemStack box, UUID playerId, int delayTicks) {
-		return returnQueue.receivePackageAndScheduleCarrierReturnToPlayer(box, playerId, delayTicks);
-	}
-
 	public boolean receivePackageAndScheduleCarrierReturnToPlayer(ItemStack box, UUID playerId) {
 		return returnQueue.receivePackageAndScheduleCarrierReturnToPlayer(
 			box, playerId, PhantomPortReturnQueue.RETURN_LAUNCH_DELAY_TICKS);
 	}
 
-	public boolean tryQueueReturnCarrier(@Nullable ResourceKey<net.minecraft.world.level.Level> returnDimension,
-										 @Nullable BlockPos returnPos) {
-		return returnQueue.tryQueueReturnCarrier(returnDimension, returnPos);
-	}
-
-	public enum CourierReceiveResult {
-		REJECTED,
-		CARRIER_STORED,
-		RETURN_QUEUED,
-		CARRIER_DROPPED
-	}
-
-	public CourierReceiveResult receivePackageAndHandleCarrier(ItemStack box,
+	public boolean receivePackageAndHandleCarrier(ItemStack box,
 		@Nullable ResourceKey<net.minecraft.world.level.Level> returnDimension, @Nullable BlockPos returnPos) {
 		return returnQueue.receivePackageAndHandleCarrier(box, returnDimension, returnPos);
 	}

@@ -4,6 +4,7 @@ import com.yision.phantom.entity.courier.AirCourierEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,8 +15,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class AirCourierTaskManager {
-	private static final int SAVE_CHECKPOINT_TICKS = 20;
-
 	private static @Nullable AirCourierTaskSavedData savedData;
 	private static final Map<UUID, AirCourierEntity> visualEntities = new HashMap<>();
 
@@ -33,33 +32,28 @@ public final class AirCourierTaskManager {
 		}
 
 		List<AirCourierTask> tasks = savedData.getTasks();
-		List<AirCourierTask> completed = new ArrayList<>();
+		boolean hasCompletedTasks = false;
 
 		for (AirCourierTask task : tasks) {
 			task.tick(server);
 
 			if (task.isRemoved()) {
 				removeVisualEntity(task);
-				completed.add(task);
+				hasCompletedTasks = true;
 				continue;
 			}
 
-			ServerLevel level = server.getLevel(task.currentDimension());
-			if (level == null) {
-				removeVisualEntity(task);
-				continue;
-			}
-
-			if (canShowEntity(level, task.position())) {
+			ServerLevel level = task.isActive() ? server.getLevel(task.currentDimension()) : null;
+			if (level != null && canShowEntity(level, task.position())) {
 				spawnOrSyncVisualEntity(level, task);
 			} else {
 				removeVisualEntity(task);
 			}
 		}
 
-		if (!completed.isEmpty()) {
+		if (hasCompletedTasks) {
 			savedData.removeCompleted();
-		} else if (!tasks.isEmpty() && server.getTickCount() % SAVE_CHECKPOINT_TICKS == 0) {
+		} else if (!tasks.isEmpty()) {
 			savedData.markDirty();
 		}
 	}
@@ -75,10 +69,23 @@ public final class AirCourierTaskManager {
 		if (savedData == null) {
 			savedData = AirCourierTaskSavedData.getOrCreate(server);
 		}
+		task.prepareForDispatch(server);
 		savedData.addTask(task);
 		ServerLevel level = server.getLevel(task.currentDimension());
-		if (level != null && canShowEntity(level, task.position())) {
+		if (task.isActive() && level != null && canShowEntity(level, task.position())) {
 			spawnOrSyncVisualEntity(level, task);
+		}
+	}
+
+	public static void onPlayerLoggedOut(ServerPlayer player) {
+		if (savedData == null) return;
+		for (AirCourierTask task : savedData.getTasks()) {
+			if (task.isActive() && task.targetPhantomPortPos() == null
+				&& player.getUUID().equals(task.targetPlayerId())) {
+				task.pauseForPlayer(player.getServer());
+				removeVisualEntity(task);
+				savedData.markDirty();
+			}
 		}
 	}
 
@@ -106,7 +113,7 @@ public final class AirCourierTaskManager {
 			existing.discard();
 		}
 		AirCourierEntity courier = AirCourierEntity.createFromTask(level, task);
-		if (courier != null && level.addFreshEntity(courier)) {
+		if (level.addFreshEntity(courier)) {
 			visualEntities.put(task.id(), courier);
 		}
 	}
@@ -124,7 +131,6 @@ public final class AirCourierTaskManager {
 		entity.setMission(task.mission());
 		entity.setDeltaMovement(task.motion());
 		entity.setPos(task.position());
-		entity.hurtMarked = true;
 	}
 
 	private static void clearRuntimeState() {

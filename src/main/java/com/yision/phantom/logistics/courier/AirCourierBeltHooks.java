@@ -99,10 +99,6 @@ public final class AirCourierBeltHooks {
 		}
 
 		var target = returnTarget.get();
-		if (!AirCourierDispatchService.canReceiveCarrierTarget(
-			serverLevel, target.dimension(), target.pos())) {
-			return false;
-		}
 		LaunchGeometry launch = getLaunchGeometry(serverLevel, belt, stack);
 		AirCourierTask task = AirCourierTask.forCarrierReturn(
 			UUID.randomUUID(), serverLevel, target.dimension(), target.pos(),
@@ -121,13 +117,10 @@ public final class AirCourierBeltHooks {
 			return true;
 		}
 		ServerPlayer player = serverLevel.getServer().getPlayerList().getPlayer(returnTarget.get());
-		if (player == null || !player.isAlive()) {
-			return false;
-		}
-
 		LaunchGeometry launch = getLaunchGeometry(serverLevel, belt, stack);
 		AirCourierTask task = AirCourierTask.forCarrierReturnToPlayer(
-			UUID.randomUUID(), serverLevel, player.getUUID(), player.serverLevel().dimension(),
+			UUID.randomUUID(), serverLevel, returnTarget.get(),
+			player != null ? player.serverLevel().dimension() : serverLevel.dimension(),
 			launch.spawnPos(), launch.direction(), launch.motion());
 
 		AirCourierTaskManager.addTask(serverLevel.getServer(), task);

@@ -8,7 +8,6 @@ import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour
 import com.yision.phantom.logistics.courier.AirCourierHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
@@ -103,19 +102,6 @@ final class PhantomPortBeltAccess {
 		return port.getLevel() != null && port.getLevel().hasChunkAt(beltPos)
 			? port.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, beltPos, Direction.UP)
 			: null;
-	}
-
-	boolean tryInsertToLaunchBelt(ItemStack stack) {
-		Direction side = specialSide();
-		if (!hasManualDispatchFunnel(side)) {
-			return false;
-		}
-		IItemHandler beltHandler = launchBeltHandler(side);
-		if (beltHandler == null) {
-			return false;
-		}
-		return beltHandler.insertItem(0, stack.copy(), true).isEmpty()
-			&& beltHandler.insertItem(0, stack.copy(), false).isEmpty();
 	}
 
 	BlockPos funnelPos(Direction side) {

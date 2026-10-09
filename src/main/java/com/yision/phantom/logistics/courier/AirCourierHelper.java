@@ -2,11 +2,11 @@ package com.yision.phantom.logistics.courier;
 
 import com.simibubi.create.content.kinetics.belt.BeltBlockEntity;
 import com.simibubi.create.content.kinetics.belt.transport.TransportedItemStack;
-import com.simibubi.create.content.logistics.box.PackageEntity;
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
 import com.yision.phantom.logistics.address.PhantomAddressRules;
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
+import com.yision.phantom.logistics.courier.flight.AirCourierFlightMath;
 import com.yision.phantom.registry.AllItems;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -18,8 +18,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.Level;
@@ -59,18 +57,6 @@ public final class AirCourierHelper {
 		return null;
 	}
 
-	public static boolean canReceiveDelivery(ServerPlayer player, ItemStack box) {
-		return canFitInInventory(player.getInventory(), box.copy());
-	}
-
-	public static boolean deliverPackage(ServerPlayer player, ItemStack box) {
-		if (PackageItem.isPackage(box)) {
-			player.getInventory().placeItemBackInInventory(box.copy());
-			return true;
-		}
-		return false;
-	}
-
 	public static boolean deliverPackageOnly(ServerPlayer player, ItemStack box) {
 		if (!PackageItem.isPackage(box)) {
 			return false;
@@ -79,61 +65,8 @@ public final class AirCourierHelper {
 		return true;
 	}
 
-	public static boolean canReceiveCarrier(ServerPlayer player) {
-		return canFitInInventory(player.getInventory(), AllItems.MINI_PHANTOM.asStack());
-	}
-
-	public static boolean deliverCarrier(ServerPlayer player) {
+	public static void deliverCarrier(ServerPlayer player) {
 		player.getInventory().placeItemBackInInventory(AllItems.MINI_PHANTOM.asStack());
-		return true;
-	}
-
-	public static void dropPackage(ServerLevel level, Vec3 position, ItemStack box) {
-		if (PackageItem.isPackage(box)) {
-			level.addFreshEntity(PackageEntity.fromItemStack(level, position, box.copy()));
-		}
-		level.addFreshEntity(new ItemEntity(level, position.x, position.y, position.z, AllItems.MINI_PHANTOM.asStack()));
-	}
-
-	private static boolean canFitInInventory(Inventory inventory, ItemStack... stacks) {
-		List<ItemStack> slots = new ArrayList<>();
-		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-			slots.add(inventory.getItem(slot).copy());
-		}
-
-		for (ItemStack stack : stacks) {
-			ItemStack remaining = stack.copy();
-			if (remaining.isEmpty()) {
-				continue;
-			}
-			for (int slot = 0; slot < slots.size() && !remaining.isEmpty(); slot++) {
-				ItemStack existing = slots.get(slot);
-				if (existing.isEmpty() || !ItemStack.isSameItemSameComponents(existing, remaining)) {
-					continue;
-				}
-				int limit = Math.min(existing.getMaxStackSize(), remaining.getMaxStackSize());
-				int move = Math.min(remaining.getCount(), limit - existing.getCount());
-				if (move <= 0) {
-					continue;
-				}
-				existing.grow(move);
-				remaining.shrink(move);
-			}
-			for (int slot = 0; slot < slots.size() && !remaining.isEmpty(); slot++) {
-				if (!slots.get(slot).isEmpty()) {
-					continue;
-				}
-				int move = Math.min(remaining.getCount(), remaining.getMaxStackSize());
-				ItemStack inserted = remaining.copy();
-				inserted.setCount(move);
-				slots.set(slot, inserted);
-				remaining.shrink(move);
-			}
-			if (!remaining.isEmpty()) {
-				return false;
-			}
-		}
-		return true;
 	}
 
 	public static boolean isCourierLaunchStack(ItemStack stack) {
@@ -187,10 +120,8 @@ public final class AirCourierHelper {
 
 	public static Vec3 getCourierLaunchMotion(BeltBlockEntity belt, TransportedItemStack stack) {
 		float movementSpeed = Math.max(Math.abs(belt.getBeltMovementSpeed()), 1 / 8f);
-		Vec3 chainMotion = Vec3.atLowerCornerOf(belt.getBeltChainDirection()).scale(movementSpeed);
 		Vec3 launchDirection = getCourierLaunchDirection(belt, stack);
-		return new Vec3(launchDirection.x * movementSpeed, Math.max(chainMotion.y, 0) + movementSpeed,
-			launchDirection.z * movementSpeed);
+		return AirCourierFlightMath.launchMotion(launchDirection, movementSpeed);
 	}
 
 	public static BlockPos findSourcePhantomPortPos(BeltBlockEntity belt) {

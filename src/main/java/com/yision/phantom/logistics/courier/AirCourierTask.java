@@ -7,6 +7,7 @@ import com.yision.phantom.logistics.courier.flight.AirCourierFlightMath;
 import com.yision.phantom.logistics.courier.flight.AirCourierFlightPlanner;
 import com.yision.phantom.logistics.courier.flight.AirCourierFlightProfile;
 import com.yision.phantom.logistics.courier.flight.AirCourierFlightTargets;
+import com.yision.phantom.logistics.courier.flight.AirCourierFlightTracking;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudStatus;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -17,6 +18,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -33,9 +35,7 @@ public final class AirCourierTask {
 	public static final double PLAYER_REENTRY_DISTANCE = 24.0;
 	public static final double PLAYER_REENTRY_HEIGHT = 4.0;
 	public static final int PLAYER_REACQUIRE_COOLDOWN_TICKS = 40;
-	public static final int DESTINATION_UNLOADED_TIMEOUT = 600;
 	public static final int RECOVERY_WATCHDOG_TICKS = 2400;
-	private static final double PLAYER_PURSUIT_SPEED_MARGIN = 0.10;
 
 	private static final AirCourierFlightProfile FLIGHT = AirCourierFlightProfile.DEFAULT;
 
@@ -57,20 +57,20 @@ public final class AirCourierTask {
 	private Vec3 launchDirection;
 	private int phaseTicks;
 	private int deliveryElapsedTicks;
-	private int destinationUnavailableTicks;
 	private boolean removed;
 
 	private boolean teleportedNearTarget;
-	private boolean returningUndeliveredPackage;
-	private boolean recoveryTriggered;
+	private State state = State.ACTIVE;
+	private boolean packageDropped;
 
 	private @Nullable Vec3 takeoffTarget;
-	private @Nullable Vec3 takeoffMotion;
 	private @Nullable Vec3 takeoffStart;
 	private @Nullable Vec3 takeoffInitialMotion;
-	private @Nullable Vec3 cachedApproachGate;
-	private @Nullable Vec3 smoothedLandingTarget;
-	private int approachGateTicksSinceUpdate;
+	private int takeoffDuration = FLIGHT.takeoffTicks();
+	private @Nullable Vec3 previousFlightPosition;
+	private final AirCourierFlightTracking flightTracking = new AirCourierFlightTracking();
+	private double smoothedEtaTicks = -1;
+	private int lastEtaTick;
 
 	private AirCourierTask(
 		UUID id, ItemStack box,
@@ -151,64 +151,86 @@ public final class AirCourierTask {
 
 	public void tick(MinecraftServer server) {
 		if (removed) return;
-
-		ServerLevel currentLevel = server.getLevel(currentDimension);
-		if (currentLevel == null) {
-			markRemoved();
+		if (state == State.DROP_PENDING) {
+			tickDrop(server);
 			return;
 		}
-
+		FlightTarget target = prepareFlightTarget(server);
+		if (target == null) return;
 		deliveryElapsedTicks++;
-
-		if (!recoveryTriggered && deliveryElapsedTicks > RECOVERY_WATCHDOG_TICKS) {
-			recoveryTriggered = true;
-			if (!tryReturnUndeliveredPackage(server)) {
-				doFail(server, currentLevel);
-			}
+		if (deliveryElapsedTicks > RECOVERY_WATCHDOG_TICKS
+			&& !flightTracking.usesDeliveryLimit(target.playerTarget())) {
+			doFail(server);
 			return;
 		}
-
-		FlightTarget target = resolveFlightTarget(server);
-		if (target == null) {
-			waitForDestination();
-			tickWaitingForDestination(server);
+		boolean reposition = flightTracking.sample(
+			target.player() != null ? target.player().position() : target.landingTarget(),
+			target.level().dimension(), server.getTickCount());
+		if (reposition) previousFlightPosition = null;
+		if (flightTracking.shouldApproach(deliveryElapsedTicks, target.playerTarget())) {
+			flightTracking.beginFinalApproach(position, target.landingTarget());
+			tickFinalApproach(server, target);
 			return;
 		}
-
-		if (shouldTeleportNearTarget(target)) {
-			if (!isDestinationAvailable(target)) {
-				waitForDestination();
-				tickWaitingForDestination(server);
-				return;
-			}
+		if (reposition || shouldTeleportNearTarget(target)) {
 			teleportNearTarget(target);
-			currentLevel = target.level();
 		}
-
+		Vec3 tickStartPosition = position;
 		switch (phase) {
 			case TAKEOFF -> tickTakeoff(target);
 			case EXITING_DIMENSION -> tickExitDimension();
 			case CRUISE -> tickCruise(target);
-			case LANDING -> tickLanding(server, currentLevel, target);
-			case WAITING -> tickWaitingForDestination(server);
+			case LANDING -> tickLanding(server, server.getLevel(currentDimension), target);
 		}
+		if (isActive()) previousFlightPosition = tickStartPosition;
+	}
+
+	public void prepareForDispatch(MinecraftServer server) {
+		if (!removed && state != State.DROP_PENDING) prepareFlightTarget(server);
+	}
+
+	private @Nullable FlightTarget prepareFlightTarget(MinecraftServer server) {
+		AirCourierDeliveryService.TargetState targetState = AirCourierDeliveryService.targetState(
+			server, mission, targetDimension, targetPhantomPortPos, targetPlayerId, box);
+		if (targetState == AirCourierDeliveryService.TargetState.PLAYER_OFFLINE) {
+			pauseForPlayer(server);
+			return null;
+		}
+		ServerLevel currentLevel = server.getLevel(currentDimension);
+		FlightTarget target = targetState == AirCourierDeliveryService.TargetState.AVAILABLE
+			? resolveFlightTarget(server) : null;
+		if (target == null || currentLevel == null || !isFlightTargetAllowed(currentLevel, target)) {
+			doFail(server);
+			return null;
+		}
+		if (state == State.PLAYER_OFFLINE || phase == AirCourierEntity.Phase.WAITING) {
+			state = State.ACTIVE;
+			deliveryElapsedTicks = 0;
+			teleportedNearTarget = false;
+			flightTracking.reset();
+			clearCaches();
+			beginCruise();
+		}
+		return target;
+	}
+
+	public void pauseForPlayer(MinecraftServer server) {
+		if (removed || state != State.ACTIVE) return;
+		setLandingOpen(resolveLoadedTargetPhantomPort(server.getLevel(targetDimension)), false);
+		state = State.PLAYER_OFFLINE;
+		motion = Vec3.ZERO;
+		clearCaches();
 	}
 
 	private void tickTakeoff(FlightTarget target) {
-		initializeTakeoffTarget();
+		initializeTakeoffTarget(target);
 		phaseTicks++;
 
-		Vec3 exitTarget = getInitialApproachGate(target.landingTarget(), target.playerTarget());
 		AirCourierFlightPlanner.FlightStep step = AirCourierFlightPlanner.takeoff(FLIGHT,
-			position, motion, launchDirection, phaseTicks, takeoffTarget,
-			takeoffStart, takeoffInitialMotion, exitTarget);
+			position, motion, launchDirection, phaseTicks, takeoffDuration, takeoffTarget,
+			takeoffStart, takeoffInitialMotion);
 
-		if (takeoffTarget != null && step.motion().lengthSqr() > 1.0E-6) {
-			takeoffMotion = step.motion();
-		}
-		if (takeoffMotion != null) {
-			motion = takeoffMotion;
-		}
+		motion = step.motion();
 
 		if (step.complete()) {
 			if (!target.level().dimension().equals(currentDimension) && !teleportedNearTarget) {
@@ -224,10 +246,7 @@ public final class AirCourierTask {
 	}
 
 	private void tickExitDimension() {
-		Vec3 direction = AirCourierFlightMath.sanitizeNonNegativeDirection(new Vec3(motion.x, 0, motion.z));
-		if (direction.lengthSqr() < 1.0E-6) {
-			direction = AirCourierFlightMath.sanitizeNonNegativeDirection(new Vec3(launchDirection.x, 0, launchDirection.z));
-		}
+		Vec3 direction = AirCourierFlightMath.sanitizeHorizontalDirection(motion);
 		motion = direction.scale(FLIGHT.cruiseSpeed());
 		phaseTicks++;
 		position = position.add(motion);
@@ -236,20 +255,17 @@ public final class AirCourierTask {
 	private void tickCruise(FlightTarget target) {
 		phaseTicks++;
 
-		Vec3 approachGate = getApproachGate(target.landingTarget(), target.playerTarget());
+		Vec3 navigationTarget = getNavigationTarget(target);
+		Vec3 approachGate = AirCourierFlightTargets.approachGate(FLIGHT,
+			position, motion, navigationTarget, target.playerTarget());
 		AirCourierFlightPlanner.FlightStep step = AirCourierFlightPlanner.cruise(FLIGHT,
-			position, motion, approachGate, target.landingTarget(), phaseTicks, target.playerTarget(),
-			getPlayerPursuitSpeed(target.player()));
-		motion = step.motion();
+			position, flightTracking.relativeMotion(motion), approachGate, target.landingTarget(),
+			phaseTicks, target.playerTarget(), flightTracking.hasMoved());
+		motion = flightTracking.inheritMovement(step.motion());
 
 		if (step.complete()) {
-			if (!isDestinationAvailable(target)) {
-				waitForDestination();
-				return;
-			}
 			phase = AirCourierEntity.Phase.LANDING;
 			phaseTicks = 0;
-			smoothedLandingTarget = target.landingTarget();
 			setLandingOpen(resolveLoadedTargetPhantomPort(target.level()), true);
 		}
 
@@ -258,35 +274,50 @@ public final class AirCourierTask {
 
 	private void tickLanding(MinecraftServer server, ServerLevel currentLevel, FlightTarget target) {
 		phaseTicks++;
-		if (!isDestinationAvailable(target)) {
-			setLandingOpen(resolveLoadedTargetPhantomPort(target.level()), false);
-			waitForDestination();
-			return;
-		}
 		setLandingOpen(resolveLoadedTargetPhantomPort(target.level()), true);
 
-		if (target.player() != null && hasReachedPlayer(target.player())) {
+		if (hasReachedTarget(target, previousFlightPosition, flightTracking.movement())) {
 			doFinishDelivery(server, currentLevel);
 			return;
 		}
 
-		Vec3 landingTarget = getSmoothedLandingTarget(target.landingTarget(), target.playerTarget());
-
-		AirCourierFlightPlanner.FlightStep step = AirCourierFlightPlanner.landing(FLIGHT,
-			position, motion, landingTarget, target.completionDistance(), target.playerTarget(),
-			getPlayerPursuitSpeed(target.player()));
-		motion = step.motion();
-
-		if (step.complete() || (target.player() != null && hasReachedPlayer(target.player()))) {
-			doFinishDelivery(server, currentLevel);
+		if (flightTracking.hasMoved() && position.distanceTo(target.landingTarget()) > FLIGHT.landingDecelerationRange() * 2) {
+			setLandingOpen(resolveLoadedTargetPhantomPort(target.level()), false);
+			beginCruise();
+			tickCruise(target);
 			return;
 		}
 
+		Vec3 landingMotion = AirCourierFlightPlanner.landing(FLIGHT,
+			position, flightTracking.relativeMotion(motion), target.landingTarget(),
+			target.completionDistance(), target.playerTarget(), flightTracking.hasMoved());
+		motion = flightTracking.inheritMovement(landingMotion);
+		Vec3 start = position;
 		position = position.add(motion);
+		if (hasReachedTarget(target, start, Vec3.ZERO)) {
+			doFinishDelivery(server, currentLevel);
+		}
+	}
+
+	private void tickFinalApproach(MinecraftServer server, FlightTarget target) {
+		Vec3 start = position;
+		currentDimension = target.level().dimension();
+		targetDimension = target.level().dimension();
+		phase = AirCourierEntity.Phase.LANDING;
+		phaseTicks++;
+		setLandingOpen(resolveLoadedTargetPhantomPort(target.level()), true);
+		position = flightTracking.finalApproachPosition(target.landingTarget(), deliveryElapsedTicks);
+		motion = position.subtract(start);
+		previousFlightPosition = null;
+		if (deliveryElapsedTicks >= AirCourierFlightTracking.DELIVERY_LIMIT_TICKS
+			|| hasReachedTarget(target, null, Vec3.ZERO)) {
+			doFinishDelivery(server, target.level());
+		}
 	}
 
 	private void teleportNearTarget(FlightTarget target) {
 		Vec3 spawnPos = computeNearTargetSpawn(target);
+		double reentrySpeed = Math.max(FLIGHT.cruiseSpeed(), flightTracking.relativeMotion(motion).length());
 
 		currentDimension = target.level().dimension();
 		if (target.player() != null) {
@@ -294,21 +325,13 @@ public final class AirCourierTask {
 		}
 		position = spawnPos;
 
-		Vec3 desired = target.cruiseTarget().subtract(position);
-		if (desired.lengthSqr() > 1.0E-6) {
-			motion = desired.normalize().scale(FLIGHT.cruiseSpeed());
-		} else {
-			Vec3 away = new Vec3(position.x - target.cruiseTarget().x, 0, position.z - target.cruiseTarget().z);
-			if (away.lengthSqr() < 1.0E-6) away = new Vec3(-launchDirection.x, 0, -launchDirection.z);
-			if (away.lengthSqr() < 1.0E-6) away = new Vec3(0, 0, 1);
-			motion = away.normalize().scale(-FLIGHT.cruiseSpeed());
-		}
+		motion = flightTracking.inheritMovement(target.cruiseTarget().subtract(position).normalize().scale(reentrySpeed));
 
 		phase = AirCourierEntity.Phase.CRUISE;
 		phaseTicks = 0;
 		teleportedNearTarget = true;
-		destinationUnavailableTicks = 0;
-		clearCaches();
+		previousFlightPosition = null;
+		smoothedEtaTicks = -1;
 	}
 
 	private Vec3 computeNearTargetSpawn(FlightTarget target) {
@@ -332,7 +355,7 @@ public final class AirCourierTask {
 
 	private boolean shouldTeleportNearTarget(FlightTarget target) {
 		boolean differentDimension = !target.level().dimension().equals(currentDimension);
-		if (teleportedNearTarget && target.playerTarget()) {
+		if (teleportedNearTarget && flightTracking.usesDeliveryLimit(target.playerTarget())) {
 			return differentDimension || phaseTicks >= PLAYER_REACQUIRE_COOLDOWN_TICKS
 				&& position.distanceTo(target.landingTarget()) > LONG_ROUTE_REMAINING_DISTANCE;
 		}
@@ -343,153 +366,70 @@ public final class AirCourierTask {
 			|| position.distanceTo(target.landingTarget()) > LONG_ROUTE_REMAINING_DISTANCE;
 	}
 
-	private double getPlayerPursuitSpeed(@Nullable ServerPlayer player) {
-		if (player == null)
-			return 0;
-		Vec3 previousPosition = new Vec3(player.xo, player.yo, player.zo);
-		double playerSpeed = player.position().distanceTo(previousPosition);
-		return playerSpeed + PLAYER_PURSUIT_SPEED_MARGIN;
+	private Vec3 getNavigationTarget(FlightTarget target) {
+		return AirCourierFlightMath.navigationTarget(target.landingTarget(), flightTracking.smoothedMovement(),
+			position.distanceTo(target.landingTarget()), target.completionDistance());
 	}
 
-	private boolean isDestinationAvailable(FlightTarget target) {
-		if (target.player() != null) {
-			return target.player().isAlive() && target.player().serverLevel() == target.level();
-		}
-		return resolveLoadedTargetPhantomPort(target.level()) != null;
+	private boolean isFlightTargetAllowed(ServerLevel currentLevel, FlightTarget target) {
+		return (mission != AirCourierEntity.Mission.PACKAGE_TO_AIRPORT
+			&& mission != AirCourierEntity.Mission.PACKAGE_TO_PLAYER)
+			|| AirCourierDimensionRules.canTarget(currentLevel, target.level().dimension());
 	}
 
 	private @Nullable PhantomPortBlockEntity resolveLoadedTargetPhantomPort(@Nullable ServerLevel level) {
-		if (level == null || targetPhantomPortPos == null
-			|| !level.isPositionEntityTicking(targetPhantomPortPos)) {
-			return null;
-		}
-		return level.getBlockEntity(targetPhantomPortPos) instanceof PhantomPortBlockEntity port ? port : null;
-	}
-
-	private void waitForDestination() {
-		if (phase == AirCourierEntity.Phase.WAITING) {
-			return;
-		}
-		phase = AirCourierEntity.Phase.WAITING;
-		phaseTicks = 0;
-		motion = Vec3.ZERO;
-		clearCaches();
-	}
-
-	private void tickWaitingForDestination(MinecraftServer server) {
-		FlightTarget target = resolveFlightTarget(server);
-		if (target != null && isDestinationAvailable(target)) {
-			destinationUnavailableTicks = 0;
-			if (shouldTeleportNearTarget(target)) {
-				teleportNearTarget(target);
-			} else {
-				beginCruise();
-			}
-			return;
-		}
-
-		destinationUnavailableTicks++;
-		if (destinationUnavailableTicks >= DESTINATION_UNLOADED_TIMEOUT
-			&& !returningUndeliveredPackage) {
-			tryReturnUndeliveredPackage(server);
-		}
-	}
-
-	private boolean tryReturnUndeliveredPackage(MinecraftServer server) {
-		if (returningUndeliveredPackage || box.isEmpty()
-			|| (mission != AirCourierEntity.Mission.PACKAGE_TO_AIRPORT
-				&& mission != AirCourierEntity.Mission.PACKAGE_TO_PLAYER)) {
-			return false;
-		}
-
-		ResourceKey<Level> returnDimension = sourceDimension;
-		BlockPos returnPort = sourcePhantomPortPos;
-		UUID returnPlayerId = sourcePlayerId;
-
-		if (returnPort != null && returnDimension != null) {
-			targetDimension = returnDimension;
-			targetPhantomPortPos = returnPort;
-			targetPlayerId = null;
-			mission = AirCourierEntity.Mission.PACKAGE_TO_AIRPORT;
-		} else {
-			ServerPlayer returnPlayer = returnPlayerId != null
-				? server.getPlayerList().getPlayer(returnPlayerId) : null;
-			if (returnPlayer == null || !returnPlayer.isAlive()) {
-				return false;
-			}
-			targetDimension = returnPlayer.serverLevel().dimension();
-			targetPhantomPortPos = null;
-			targetPlayerId = returnPlayer.getUUID();
-			mission = AirCourierEntity.Mission.PACKAGE_TO_PLAYER;
-		}
-
-		sourceDimension = null;
-		sourcePhantomPortPos = null;
-		sourcePlayerId = null;
-		returningUndeliveredPackage = true;
-		recoveryTriggered = true;
-		teleportedNearTarget = false;
-		destinationUnavailableTicks = 0;
-		deliveryElapsedTicks = 0;
-		phase = AirCourierEntity.Phase.CRUISE;
-		phaseTicks = 0;
-		if (motion.lengthSqr() > 1.0E-6) {
-			motion = motion.scale(-1).normalize().scale(FLIGHT.cruiseSpeed());
-		} else {
-			Vec3 reverseLaunch = launchDirection.scale(-1);
-			motion = reverseLaunch.lengthSqr() > 1.0E-6
-				? reverseLaunch.normalize().scale(FLIGHT.cruiseSpeed()) : Vec3.ZERO;
-		}
-		clearCaches();
-		return true;
+		return AirCourierDeliveryService.resolveTargetPhantomPort(level, targetPhantomPortPos);
 	}
 
 	private void beginCruise() {
 		phase = AirCourierEntity.Phase.CRUISE;
 		phaseTicks = 0;
-		clearCaches();
+		previousFlightPosition = null;
+		smoothedEtaTicks = -1;
 	}
 
-	private void doFinishDelivery(MinecraftServer server, ServerLevel currentLevel) {
-		doFinishDeliveryAt(server, currentLevel);
-	}
+	private void doFinishDelivery(MinecraftServer server, @Nullable ServerLevel level) {
+		if (!isActive()) return;
+		if (level == null) { doFail(server); return; }
 
-	private void doFinishDeliveryAt(MinecraftServer server, @Nullable ServerLevel level) {
-		if (level == null) { markRemoved(); return; }
+		setLandingOpen(resolveLoadedTargetPhantomPort(server.getLevel(targetDimension)), false);
 
-		ResolvedTarget rt = resolveTarget(server);
-		Vec3 landingTarget = rt != null
-			? AirCourierFlightTargets.landingTarget(FLIGHT, rt.phantomPort, rt.player)
-			: position;
-
-		setLandingOpen(rt != null ? rt.phantomPort : null, false);
-
-		boolean handled = AirCourierDeliveryService.finishDelivery(
+		boolean delivered = AirCourierDeliveryService.finishDelivery(
 			server, box, mission, sourceDimension, sourcePhantomPortPos, sourcePlayerId,
-			targetDimension, targetPhantomPortPos, targetPlayerId, hudPlayerId, hudEntryId,
-			level, position, landingTarget);
+			targetDimension, targetPhantomPortPos, targetPlayerId, hudPlayerId, hudEntryId);
 
-		if (handled) {
-			AirCourierDeliveryService.spawnDeliveryParticles(level, position);
-			if (mission == AirCourierEntity.Mission.PACKAGE_TO_PLAYER && !box.isEmpty()) {
-				startCarrierReturn(server);
-				return;
-			}
+		if (!delivered) {
+			if (prepareFlightTarget(server) != null) doFail(server);
+			return;
+		}
+		AirCourierDeliveryService.spawnDeliveryParticles(level, position);
+		if (mission == AirCourierEntity.Mission.PACKAGE_TO_PLAYER && !box.isEmpty()) {
+			startCarrierReturn(server);
+			return;
 		}
 		markRemoved();
 	}
 
-	private void doFail(MinecraftServer server, @Nullable ServerLevel currentLevel) {
-		if (currentLevel == null) { markRemoved(); return; }
+	private void doFail(MinecraftServer server) {
+		if (removed || state == State.DROP_PENDING) return;
+		setLandingOpen(resolveLoadedTargetPhantomPort(server.getLevel(targetDimension)), false);
+		state = State.DROP_PENDING;
+		motion = Vec3.ZERO;
+		clearCaches();
+		AirCourierDeliveryService.notifyFailure(server, box, targetPlayerId, hudPlayerId, hudEntryId);
+		tickDrop(server);
+	}
 
-		ResolvedTarget rt = resolveTarget(server);
-		Vec3 dropTarget = rt != null ? AirCourierFlightTargets.landingTarget(FLIGHT, rt.phantomPort, null) : position;
-		Vec3 dropPos = rt != null && rt.phantomPort != null ? dropTarget : position;
-
-		setLandingOpen(rt != null ? rt.phantomPort : null, false);
-		AirCourierDeliveryService.failAndDrop(server, box, mission, sourceDimension,
-			sourcePhantomPortPos, currentLevel, dropPos, targetPlayerId, hudPlayerId, hudEntryId);
-		markRemoved();
+	private void tickDrop(MinecraftServer server) {
+		ServerLevel level = server.getLevel(currentDimension);
+		if (level == null || !level.isPositionEntityTicking(BlockPos.containing(position))) return;
+		if (!packageDropped) {
+			packageDropped = mission == AirCourierEntity.Mission.CARRIER_RETURN
+				|| mission == AirCourierEntity.Mission.CARRIER_RETURN_TO_PLAYER
+				|| AirCourierDeliveryService.dropPackage(level, position, box);
+			if (!packageDropped) return;
+		}
+		if (AirCourierDeliveryService.dropCarrier(level, position)) markRemoved();
 	}
 
 	private void startCarrierReturn(MinecraftServer server) {
@@ -498,26 +438,14 @@ public final class AirCourierTask {
 			targetDimension = sourceDimension;
 			targetPlayerId = null;
 			resetForReturn(AirCourierEntity.Mission.CARRIER_RETURN);
-			ServerLevel currentLevel = server.getLevel(currentDimension);
-			if (currentLevel == null || !AirCourierDispatchService.canReceiveCarrierTarget(
-				currentLevel, targetDimension, targetPhantomPortPos)) {
-				waitForDestination();
-			}
-		} else if (sourcePlayerId != null) {
-			ServerPlayer sourcePlayer = server.getPlayerList().getPlayer(sourcePlayerId);
-			if (sourcePlayer != null && sourcePlayer.isAlive()) {
-				targetPhantomPortPos = null;
-				targetPlayerId = sourcePlayerId;
-				targetDimension = sourcePlayer.serverLevel().dimension();
-				resetForReturn(AirCourierEntity.Mission.CARRIER_RETURN_TO_PLAYER);
-			} else {
-				AirCourierDeliveryService.dropCarrierOnly(server.getLevel(currentDimension), position);
-				markRemoved();
-			}
 		} else {
-			AirCourierDeliveryService.dropCarrierOnly(server.getLevel(currentDimension), position);
-			markRemoved();
+			targetPhantomPortPos = null;
+			targetPlayerId = sourcePlayerId;
+			ServerPlayer sourcePlayer = AirCourierDeliveryService.resolvePlayer(server, sourcePlayerId);
+			if (sourcePlayer != null) targetDimension = sourcePlayer.serverLevel().dimension();
+			resetForReturn(AirCourierEntity.Mission.CARRIER_RETURN_TO_PLAYER);
 		}
+		prepareFlightTarget(server);
 	}
 
 	private void resetForReturn(AirCourierEntity.Mission nextMission) {
@@ -528,91 +456,47 @@ public final class AirCourierTask {
 		phase = AirCourierEntity.Phase.TAKEOFF;
 		phaseTicks = 0;
 		deliveryElapsedTicks = 0;
-		destinationUnavailableTicks = 0;
 		teleportedNearTarget = false;
-		returningUndeliveredPackage = false;
-		recoveryTriggered = false;
+		state = State.ACTIVE;
+		packageDropped = false;
+		flightTracking.reset();
 		clearCaches();
-		Vec3 direction = AirCourierFlightMath.sanitizeNonNegativeDirection(new Vec3(launchDirection.x, 0, launchDirection.z));
-		motion = direction.scale(FLIGHT.takeoffSpeed()).add(0, 0.15, 0);
+		takeoffTarget = null;
+		launchDirection = takeoffDirection();
+		motion = AirCourierFlightMath.launchMotion(launchDirection,
+			Math.min(motion.horizontalDistance(), FLIGHT.takeoffSpeed()));
 		takeoffStart = position;
 		takeoffInitialMotion = motion;
+		takeoffDuration = FLIGHT.takeoffTicks();
 	}
 
-	private Vec3 previewTeleportPosition(FlightTarget target) {
-		return computeNearTargetSpawn(target);
+	private Vec3 takeoffDirection() {
+		return AirCourierFlightMath.sanitizeHorizontalDirection(
+			motion.horizontalDistance() > 1.0E-4 ? motion : launchDirection);
 	}
 
-	private @Nullable ServerLevel resolveTargetLevel(MinecraftServer server) {
-		if (targetPhantomPortPos != null && targetDimension != null) {
-			return server.getLevel(targetDimension);
-		}
-		ServerPlayer player = resolveTargetPlayer(server);
-		if (player != null) return player.serverLevel();
-		return targetDimension != null ? server.getLevel(targetDimension) : null;
+	private double takeoffScale(FlightTarget target, Vec3 origin) {
+		return currentDimension.equals(target.level().dimension())
+			? AirCourierFlightMath.takeoffScale(origin, target.landingTarget()) : 1.0;
 	}
 
-	private @Nullable PhantomPortBlockEntity resolveTargetPhantomPort(@Nullable ServerLevel level) {
-		return AirCourierDeliveryService.resolveTargetPhantomPort(level, targetPhantomPortPos);
-	}
-
-	private @Nullable ServerPlayer resolveTargetPlayer(MinecraftServer server) {
-		return AirCourierDeliveryService.resolvePlayer(server, targetPlayerId);
-	}
-
-	private void initializeTakeoffTarget() {
+	private void initializeTakeoffTarget(FlightTarget target) {
 		if (takeoffTarget != null) return;
-		Vec3 hDir = AirCourierFlightMath.sanitizeNonNegativeDirection(new Vec3(motion.x, 0, motion.z));
-		if (hDir.lengthSqr() < 1.0E-4) {
-			hDir = AirCourierFlightMath.sanitizeNonNegativeDirection(launchDirection);
-		}
-		if (hDir.lengthSqr() < 1.0E-4) return;
+		Vec3 hDir = takeoffDirection();
 		Vec3 origin = takeoffStart != null ? takeoffStart : position;
-		takeoffTarget = origin.add(hDir.scale(FLIGHT.takeoffForwardDistance()))
-			.add(0, FLIGHT.takeoffAltitudeGain(), 0);
-		Vec3 desired = takeoffTarget.subtract(position);
-		if (desired.lengthSqr() > 1.0E-6) {
-			takeoffMotion = desired.normalize().scale(FLIGHT.takeoffSpeed());
-		}
+		double scale = takeoffScale(target, origin);
+		takeoffDuration = Mth.ceil(FLIGHT.takeoffTicks() * scale);
+		takeoffTarget = origin.add(hDir.scale(FLIGHT.takeoffForwardDistance() * scale))
+			.add(0, FLIGHT.takeoffAltitudeGain() * scale, 0);
 	}
 
-	private Vec3 getInitialApproachGate(Vec3 landingTarget, boolean playerTarget) {
-		Vec3 gatePos = takeoffTarget != null ? takeoffTarget : position;
-		Vec3 gateMotion = takeoffMotion != null ? takeoffMotion : motion;
-		return AirCourierFlightTargets.approachGate(FLIGHT, gatePos, gateMotion, landingTarget, playerTarget);
-	}
-
-	private Vec3 getApproachGate(Vec3 landingTarget, boolean playerTarget) {
-		Vec3 nextGate = AirCourierFlightTargets.approachGate(FLIGHT, position, motion, landingTarget, playerTarget);
-		if (!playerTarget) {
-			cachedApproachGate = nextGate;
-			return cachedApproachGate;
-		}
-		if (cachedApproachGate == null) {
-			cachedApproachGate = nextGate;
-			return cachedApproachGate;
-		}
-		approachGateTicksSinceUpdate++;
-		if (approachGateTicksSinceUpdate >= FLIGHT.playerApproachGateUpdateTicks()) {
-			cachedApproachGate = cachedApproachGate.lerp(nextGate, FLIGHT.playerApproachGateLerp());
-			approachGateTicksSinceUpdate = 0;
-		}
-		return cachedApproachGate;
-	}
-
-	private Vec3 getSmoothedLandingTarget(Vec3 landingTarget, boolean playerTarget) {
-		if (!playerTarget) { smoothedLandingTarget = landingTarget; return landingTarget; }
-		if (smoothedLandingTarget == null) {
-			smoothedLandingTarget = landingTarget;
-		} else {
-			smoothedLandingTarget = smoothedLandingTarget.lerp(landingTarget, FLIGHT.playerLandingTargetLerp());
-		}
-		return smoothedLandingTarget;
-	}
-
-	private boolean hasReachedPlayer(ServerPlayer targetPlayer) {
-		return targetPlayer.getBoundingBox().inflate(0.45, 0.6, 0.45).contains(position)
-			|| position.distanceTo(AirCourierFlightTargets.playerDeliveryTarget(FLIGHT, targetPlayer)) <= 1.5;
+	private boolean hasReachedTarget(FlightTarget target, @Nullable Vec3 previousPosition, Vec3 targetMovement) {
+		if (!currentDimension.equals(target.level().dimension())) return false;
+		return target.player() != null
+			? AirCourierFlightMath.reachesPlayer(position, previousPosition, target.player().getBoundingBox(),
+				target.landingTarget(), targetMovement, target.completionDistance())
+			: AirCourierFlightMath.reachesTarget(position, previousPosition, target.landingTarget(),
+				targetMovement, target.completionDistance());
 	}
 
 	private void setLandingOpen(@Nullable PhantomPortBlockEntity phantomPort, boolean open) {
@@ -622,9 +506,9 @@ public final class AirCourierTask {
 	}
 
 	private void clearCaches() {
-		cachedApproachGate = null;
-		smoothedLandingTarget = null;
-		approachGateTicksSinceUpdate = 0;
+		flightTracking.clearMotion();
+		previousFlightPosition = null;
+		smoothedEtaTicks = -1;
 	}
 
 	private record FlightTarget(
@@ -651,7 +535,7 @@ public final class AirCourierTask {
 				FLIGHT.phantomPortCompletionDistance());
 		}
 
-		ServerPlayer player = resolveTargetPlayer(server);
+		ServerPlayer player = AirCourierDeliveryService.resolvePlayer(server, targetPlayerId);
 		if (player == null) {
 			return null;
 		}
@@ -659,23 +543,6 @@ public final class AirCourierTask {
 			AirCourierFlightTargets.cruiseTarget(FLIGHT, null, player),
 			AirCourierFlightTargets.landingTarget(FLIGHT, null, player),
 			FLIGHT.playerCompletionDistance());
-	}
-
-	private record ResolvedTarget(
-		ServerLevel level,
-		@Nullable PhantomPortBlockEntity phantomPort,
-		@Nullable ServerPlayer player
-	) {}
-
-	private @Nullable ResolvedTarget resolveTarget(MinecraftServer server) {
-		ServerLevel level = resolveTargetLevel(server);
-		if (level == null) return null;
-		if (targetPhantomPortPos != null) {
-			PhantomPortBlockEntity phantomPort = resolveTargetPhantomPort(level);
-			return phantomPort != null ? new ResolvedTarget(level, phantomPort, null) : null;
-		}
-		ServerPlayer player = resolveTargetPlayer(server);
-		return player != null ? new ResolvedTarget(level, null, player) : null;
 	}
 
 	public AirCourierTaskSnapshot snapshot(MinecraftServer server) {
@@ -686,60 +553,87 @@ public final class AirCourierTask {
 	}
 
 	public int estimateRemainingTicks(MinecraftServer server) {
-		FlightTarget target = resolveFlightTarget(server);
-		if (target == null || phase == AirCourierEntity.Phase.WAITING) return -1;
+		FlightTarget target = isActive() ? resolveFlightTarget(server) : null;
+		if (target == null || phase == AirCourierEntity.Phase.WAITING) {
+			smoothedEtaTicks = -1;
+			return -1;
+		}
+		int untilDeliveryLimit = Math.max(0, AirCourierFlightTracking.DELIVERY_LIMIT_TICKS - deliveryElapsedTicks);
+		boolean limitedDelivery = flightTracking.usesDeliveryLimit(target.playerTarget());
+		if (flightTracking.isFinalApproach()) return untilDeliveryLimit;
 
 		int physicalEstimate = switch (phase) {
 			case TAKEOFF -> estimateTakeoffTicks(target);
 			case EXITING_DIMENSION -> estimateExitDimensionTicks(target);
-			case CRUISE -> estimateCruiseTicksFrom(position, target);
-			case LANDING -> estimateLandingTicks(target);
+			case CRUISE -> estimateFlightTicks(position, target, false);
+			case LANDING -> estimateFlightTicks(position, target, true);
 			case WAITING -> -1;
 		};
 
 		if (!teleportedNearTarget
 			&& (!target.level().dimension().equals(currentDimension)
 				|| position.distanceTo(target.landingTarget()) > LONG_ROUTE_REMAINING_DISTANCE)) {
-			Vec3 teleportPreview = previewTeleportPosition(target);
-			int afterTeleport = estimateCruiseTicksFrom(teleportPreview, target);
+			Vec3 teleportPreview = computeNearTargetSpawn(target);
+			int afterTeleport = estimateFlightTicks(teleportPreview, target, false);
 			int untilTeleport = Math.max(0, LONG_ROUTE_CHECK_TICKS - deliveryElapsedTicks);
-			return Math.min(physicalEstimate, untilTeleport + afterTeleport);
+			physicalEstimate = Math.min(physicalEstimate, untilTeleport + afterTeleport);
+		}
+		if (limitedDelivery) {
+			physicalEstimate = Math.min(physicalEstimate, untilDeliveryLimit);
 		}
 
-		return physicalEstimate;
+		int tick = server.getTickCount();
+		if (smoothedEtaTicks < 0) {
+			smoothedEtaTicks = physicalEstimate;
+		} else if (tick != lastEtaTick) {
+			double remaining = Math.max(0, smoothedEtaTicks - Math.max(0, tick - lastEtaTick));
+			smoothedEtaTicks = Mth.lerp(0.5, remaining, physicalEstimate);
+		}
+		lastEtaTick = tick;
+		int result = Mth.ceil(smoothedEtaTicks);
+		return limitedDelivery ? Math.min(result, untilDeliveryLimit) : result;
 	}
 
 	private int estimateTakeoffTicks(FlightTarget target) {
-		int remainingTakeoff = Math.max(0, FLIGHT.takeoffTicks() - phaseTicks);
+		int remainingTakeoff = Math.max(0, takeoffDuration - phaseTicks);
 		Vec3 projectedEnd = takeoffTarget;
 		if (projectedEnd == null) {
-			Vec3 hDir = AirCourierFlightMath.sanitizeNonNegativeDirection(new Vec3(motion.x, 0, motion.z));
-			if (hDir.lengthSqr() < 1.0E-4) hDir = AirCourierFlightMath.sanitizeNonNegativeDirection(launchDirection);
-			projectedEnd = position.add(hDir.scale(FLIGHT.takeoffForwardDistance()))
-				.add(0, FLIGHT.takeoffAltitudeGain(), 0);
+			Vec3 hDir = takeoffDirection();
+			double scale = takeoffScale(target, position);
+			remainingTakeoff = Math.max(0, Mth.ceil(FLIGHT.takeoffTicks() * scale) - phaseTicks);
+			projectedEnd = position.add(hDir.scale(FLIGHT.takeoffForwardDistance() * scale))
+				.add(0, FLIGHT.takeoffAltitudeGain() * scale, 0);
 		}
-		return remainingTakeoff + estimateCruiseTicksFrom(projectedEnd, target);
+		if (target.playerTarget() || flightTracking.hasMoved()) {
+			Vec3 projectedMotion = AirCourierFlightMath.sanitizeHorizontalDirection(launchDirection).scale(FLIGHT.cruiseSpeed());
+			Vec3 projectedTarget = target.landingTarget().add(flightTracking.smoothedMovement().scale(remainingTakeoff));
+			return remainingTakeoff + AirCourierFlightEstimate.targetTicks(FLIGHT, projectedEnd,
+				projectedMotion, projectedTarget, target.completionDistance(), false, target.playerTarget());
+		}
+		return remainingTakeoff + estimateFlightTicks(projectedEnd, target, false);
 	}
 
 	private int estimateExitDimensionTicks(FlightTarget target) {
-		Vec3 teleportPreview = previewTeleportPosition(target);
-		int afterTeleport = estimateCruiseTicksFrom(teleportPreview, target);
+		Vec3 teleportPreview = computeNearTargetSpawn(target);
+		int afterTeleport = estimateFlightTicks(teleportPreview, target, false);
 		int untilTeleport = Math.max(0, LONG_ROUTE_CHECK_TICKS - deliveryElapsedTicks);
 		return untilTeleport + afterTeleport;
 	}
 
-	private int estimateCruiseTicksFrom(Vec3 from, FlightTarget target) {
-		return AirCourierFlightEstimate.cruiseAndLandingTicks(FLIGHT, from,
-			target.cruiseTarget(), target.landingTarget(),
-			target.completionDistance(), target.playerTarget());
-	}
-
-	private int estimateLandingTicks(FlightTarget target) {
-		return AirCourierFlightEstimate.landingTicks(FLIGHT, position,
-			target.landingTarget(), target.completionDistance());
+	private int estimateFlightTicks(Vec3 from, FlightTarget target, boolean landing) {
+		if (target.playerTarget() || flightTracking.hasMoved()) {
+			return AirCourierFlightEstimate.targetTicks(FLIGHT, from,
+				flightTracking.relativeMotion(motion), target.landingTarget(), target.completionDistance(), landing, target.playerTarget());
+		}
+		return landing
+			? AirCourierFlightEstimate.landingTicks(FLIGHT, from, target.landingTarget(), target.completionDistance())
+			: AirCourierFlightEstimate.cruiseAndLandingTicks(FLIGHT, from,
+				target.cruiseTarget(), target.landingTarget(), target.completionDistance());
 	}
 
 	private AirCourierHudStatus getHudStatus() {
+		if (state == State.DROP_PENDING) return AirCourierHudStatus.FAILED;
+		if (state == State.PLAYER_OFFLINE) return AirCourierHudStatus.PREPARING;
 		if (mission == AirCourierEntity.Mission.CARRIER_RETURN_TO_PLAYER) {
 			return AirCourierHudStatus.RETURNING;
 		}
@@ -753,23 +647,17 @@ public final class AirCourierTask {
 	public UUID id() { return id; }
 	public ItemStack box() { return box; }
 	public ResourceKey<Level> currentDimension() { return currentDimension; }
-	public ResourceKey<Level> targetDimension() { return targetDimension; }
-	public @Nullable BlockPos sourcePhantomPortPos() { return sourcePhantomPortPos; }
 	public @Nullable BlockPos targetPhantomPortPos() { return targetPhantomPortPos; }
 	public @Nullable UUID targetPlayerId() { return targetPlayerId; }
-	public @Nullable UUID hudPlayerId() { return hudPlayerId; }
 	public @Nullable UUID hudEntryId() { return hudEntryId; }
-	public @Nullable UUID sourcePlayerId() { return sourcePlayerId; }
-	public @Nullable ResourceKey<Level> sourceDimension() { return sourceDimension; }
 	public AirCourierEntity.Mission mission() { return mission; }
 	public AirCourierEntity.Phase phase() { return phase; }
 	public Vec3 position() { return position; }
 	public Vec3 motion() { return motion; }
 	public Vec3 launchDirection() { return launchDirection; }
-	public int phaseTicks() { return phaseTicks; }
-	public int deliveryElapsedTicks() { return deliveryElapsedTicks; }
+	public boolean isActive() { return !removed && state == State.ACTIVE; }
 	public boolean isRemoved() { return removed; }
-	public void markRemoved() { removed = true; }
+	private void markRemoved() { removed = true; }
 
 	public @Nullable UUID getHudTrackingPlayerId() {
 		if (mission == AirCourierEntity.Mission.CARRIER_RETURN) return null;
@@ -800,18 +688,15 @@ public final class AirCourierTask {
 		tag.put("Motion", vecToTag(motion));
 		tag.put("LaunchDirection", vecToTag(launchDirection));
 		tag.putInt("PhaseTicks", phaseTicks);
+		tag.putInt("TakeoffDuration", takeoffDuration);
 		tag.putInt("DeliveryElapsedTicks", deliveryElapsedTicks);
-		tag.putInt("DestinationUnavailableTicks", destinationUnavailableTicks);
 		tag.putBoolean("TeleportedNearTarget", teleportedNearTarget);
-		tag.putBoolean("ReturningUndeliveredPackage", returningUndeliveredPackage);
-		tag.putBoolean("RecoveryTriggered", recoveryTriggered);
+		tag.putString("State", state.name());
+		tag.putBoolean("PackageDropped", packageDropped);
+		tag.put("FlightTracking", flightTracking.save());
 		if (takeoffTarget != null) tag.put("TakeoffTarget", vecToTag(takeoffTarget));
-		if (takeoffMotion != null) tag.put("TakeoffMotion", vecToTag(takeoffMotion));
 		if (takeoffStart != null) tag.put("TakeoffStart", vecToTag(takeoffStart));
 		if (takeoffInitialMotion != null) tag.put("TakeoffInitialMotion", vecToTag(takeoffInitialMotion));
-		if (cachedApproachGate != null) tag.put("CachedApproachGate", vecToTag(cachedApproachGate));
-		if (smoothedLandingTarget != null) tag.put("SmoothedLandingTarget", vecToTag(smoothedLandingTarget));
-		tag.putInt("ApproachGateTicksSinceUpdate", approachGateTicksSinceUpdate);
 		return tag;
 	}
 
@@ -845,18 +730,15 @@ public final class AirCourierTask {
 			sourcePlayer, sourceDim, mission, position, motion, launchDir);
 		task.phase = phase;
 		task.phaseTicks = tag.getInt("PhaseTicks");
+		task.takeoffDuration = tag.contains("TakeoffDuration") ? tag.getInt("TakeoffDuration") : FLIGHT.takeoffTicks();
 		task.deliveryElapsedTicks = tag.getInt("DeliveryElapsedTicks");
-		task.destinationUnavailableTicks = tag.getInt("DestinationUnavailableTicks");
 		task.teleportedNearTarget = tag.getBoolean("TeleportedNearTarget");
-		task.returningUndeliveredPackage = tag.getBoolean("ReturningUndeliveredPackage");
-		task.recoveryTriggered = tag.getBoolean("RecoveryTriggered");
+		task.state = tag.contains("State") ? State.valueOf(tag.getString("State")) : State.ACTIVE;
+		task.packageDropped = tag.getBoolean("PackageDropped");
+		task.flightTracking.load(tag.getCompound("FlightTracking"));
 		task.takeoffTarget = tag.contains("TakeoffTarget") ? vecFromTag(tag, "TakeoffTarget") : null;
-		task.takeoffMotion = tag.contains("TakeoffMotion") ? vecFromTag(tag, "TakeoffMotion") : null;
 		task.takeoffStart = tag.contains("TakeoffStart") ? vecFromTag(tag, "TakeoffStart") : null;
 		task.takeoffInitialMotion = tag.contains("TakeoffInitialMotion") ? vecFromTag(tag, "TakeoffInitialMotion") : null;
-		task.cachedApproachGate = tag.contains("CachedApproachGate") ? vecFromTag(tag, "CachedApproachGate") : null;
-		task.smoothedLandingTarget = tag.contains("SmoothedLandingTarget") ? vecFromTag(tag, "SmoothedLandingTarget") : null;
-		task.approachGateTicksSinceUpdate = tag.getInt("ApproachGateTicksSinceUpdate");
 		return task;
 	}
 
@@ -872,6 +754,8 @@ public final class AirCourierTask {
 		CompoundTag t = tag.getCompound(key);
 		return new Vec3(t.getDouble("X"), t.getDouble("Y"), t.getDouble("Z"));
 	}
+
+	private enum State { ACTIVE, PLAYER_OFFLINE, DROP_PENDING }
 
 	public record AirCourierTaskSnapshot(
 		UUID taskId,

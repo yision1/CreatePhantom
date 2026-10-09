@@ -125,8 +125,7 @@ public final class AirCourierHudSync {
 			UUID hudPlayerId = snapshot.hudTrackingPlayerId();
 			if (hudPlayerId == null) continue;
 			int remainingTicks = snapshot.remainingTicks();
-			if (remainingTicks < 0) continue;
-			int etaSeconds = Math.max(0, Mth.ceil(remainingTicks / 20f));
+			int etaSeconds = remainingTicks < 0 ? -1 : Math.max(0, Mth.ceil(remainingTicks / 20f));
 			AirCourierHudEntry entry = new AirCourierHudEntry(snapshot.status(), etaSeconds,
 				AirCourierPackagePreview.fromPackage(snapshot.box()));
 			UUID effectiveId = snapshot.hudEntryId() != null ? snapshot.hudEntryId() : snapshot.taskId();

@@ -70,6 +70,7 @@ public class CreatePhantom {
 		});
 		NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) -> {
 			if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+				AirCourierTaskManager.onPlayerLoggedOut(player);
 				AirCourierHudSync.clearPlayer(player);
 				TunablePortableTickerSession.clearPlayer(player);
 			}

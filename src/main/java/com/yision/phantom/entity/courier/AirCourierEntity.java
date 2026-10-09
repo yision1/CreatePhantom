@@ -50,6 +50,8 @@ public class AirCourierEntity extends Entity implements Container {
 		SynchedEntityData.defineId(AirCourierEntity.class, EntityDataSerializers.VECTOR3);
 	private static final EntityDataAccessor<Byte> DATA_MISSION =
 		SynchedEntityData.defineId(AirCourierEntity.class, EntityDataSerializers.BYTE);
+	private static final EntityDataAccessor<Boolean> DATA_TASK_PROXY =
+		SynchedEntityData.defineId(AirCourierEntity.class, EntityDataSerializers.BOOLEAN);
 
 	private static final AirCourierFlightProfile FLIGHT = AirCourierFlightProfile.DEFAULT;
 	private static final double CLIENT_FAST_CORRECTION_DISTANCE_SQR = 4.0;
@@ -93,9 +95,10 @@ public class AirCourierEntity extends Entity implements Container {
 		return new AirCourierEntity(type, level);
 	}
 
-	public static @Nullable AirCourierEntity createFromTask(ServerLevel level, AirCourierTask task) {
+	public static AirCourierEntity createFromTask(ServerLevel level, AirCourierTask task) {
 		AirCourierEntity courier = new AirCourierEntity(AllEntityTypes.AIR_COURIER.get(), level);
 		courier.taskId = task.id();
+		courier.getEntityData().set(DATA_TASK_PROXY, true);
 		courier.setPackage(task.box());
 		courier.setMission(task.mission());
 		courier.setPhase(task.phase());
@@ -135,12 +138,8 @@ public class AirCourierEntity extends Entity implements Container {
 			discard();
 			return;
 		}
-		if (getPhase() == Phase.TAKEOFF) {
-			lockTakeoffRotation();
-		} else {
-			updateRotation();
-			updateRoll();
-		}
+		updateRotation();
+		updateRoll();
 	}
 
 	private void tickWaiting() {
@@ -156,18 +155,16 @@ public class AirCourierEntity extends Entity implements Container {
 		syncLaunchDirectionFromEntityData();
 		setPos(position().add(getDeltaMovement()));
 		applyClientCorrection();
+		updateRotation();
+		updateRoll();
 
 		if (getPhase() == Phase.TAKEOFF) {
-			lockTakeoffRotation();
 			if (tickCount % 3 == 0) {
 				Vec3 trail = getDeltaMovement().scale(-0.2);
 				level().addParticle(ParticleTypes.CLOUD, getX(), getY(), getZ(), trail.x, Math.max(trail.y, 0.02), trail.z);
 			}
 			return;
 		}
-
-		updateRotation();
-		updateRoll();
 
 		if (getPhase() == Phase.LANDING && tickCount % 3 == 0) {
 			Vec3 trail = getDeltaMovement().scale(-0.2);
@@ -235,21 +232,6 @@ public class AirCourierEntity extends Entity implements Container {
 		newDeltaYaw = 0;
 	}
 
-	private void lockTakeoffRotation() {
-		Vec3 motion = getDeltaMovement();
-		if (motion.lengthSqr() > 1.0E-6) {
-			double horizontalDistance = motion.horizontalDistance();
-			float xRot = (float) (Mth.atan2(motion.y, horizontalDistance) * 180.0F / Math.PI);
-			float yRot = (float) (Mth.atan2(motion.x, motion.z) * 180.0F / Math.PI);
-			setXRot(xRot);
-			setYRot(yRot);
-			xRotO = xRot;
-			yRotO = yRot;
-		}
-		oldDeltaYaw = 0;
-		newDeltaYaw = 0;
-	}
-
 	private void applyClientCorrection() {
 		if (clientSyncedPos == null) {
 			return;
@@ -293,7 +275,10 @@ public class AirCourierEntity extends Entity implements Container {
 	}
 
 	public void setPackage(ItemStack box) {
-		getEntityData().set(DATA_PACKAGE, PackageItem.isPackage(box) ? box.copy() : ItemStack.EMPTY);
+		ItemStack next = PackageItem.isPackage(box) ? box : ItemStack.EMPTY;
+		if (!ItemStack.matches(getPackage(), next)) {
+			getEntityData().set(DATA_PACKAGE, next.copy());
+		}
 	}
 
 	public Phase getPhase() {
@@ -339,7 +324,7 @@ public class AirCourierEntity extends Entity implements Container {
 	}
 
 	private boolean exposesPackageContents() {
-		return getPhase() == Phase.WAITING && PackageItem.isPackage(getPackage());
+		return isManualWaiting() && PackageItem.isPackage(getPackage());
 	}
 
 	@Override
@@ -389,7 +374,7 @@ public class AirCourierEntity extends Entity implements Container {
 
 	@Override
 	public boolean stillValid(Player player) {
-		return isAlive() && exposesPackageContents() && player.distanceToSqr(this) <= 64.0;
+		return exposesPackageContents() && player.distanceToSqr(this) <= 64.0;
 	}
 
 	@Override
@@ -397,7 +382,7 @@ public class AirCourierEntity extends Entity implements Container {
 
 	@Override
 	public ItemStack getPickedResult(HitResult target) {
-		if (getPhase() != Phase.WAITING) {
+		if (!isManualWaiting()) {
 			return ItemStack.EMPTY;
 		}
 		ItemStack picked = MiniPhantomItem.createLoaded(getPackage());
@@ -410,7 +395,7 @@ public class AirCourierEntity extends Entity implements Container {
 
 	@Override
 	public boolean hurt(net.minecraft.world.damagesource.DamageSource damageSource, float amount) {
-		if (getPhase() != Phase.WAITING) {
+		if (!isManualWaiting()) {
 			return false;
 		}
 		if (level().isClientSide()) {
@@ -441,17 +426,17 @@ public class AirCourierEntity extends Entity implements Container {
 
 	@Override
 	public boolean isPickable() {
-		return getPhase() == Phase.WAITING;
+		return isManualWaiting();
 	}
 
 	@Override
 	public boolean canBeCollidedWith() {
-		return getPhase() == Phase.WAITING;
+		return isManualWaiting();
 	}
 
 	@Override
 	public InteractionResult interact(Player player, InteractionHand hand) {
-		if (getPhase() != Phase.WAITING) {
+		if (!isManualWaiting()) {
 			return InteractionResult.PASS;
 		}
 
@@ -476,7 +461,7 @@ public class AirCourierEntity extends Entity implements Container {
 
 			Vec3 launchDir = AirCourierFlightMath.sanitizeNonNegativeDirection(
 				new Vec3(launchDirection.x, 0, launchDirection.z));
-			Vec3 launchMotion = launchDir.scale(FLIGHT.takeoffSpeed()).add(0, 0.15f, 0);
+			Vec3 launchMotion = AirCourierFlightMath.launchMotion(launchDir, FLIGHT.takeoffSpeed());
 			Vec3 spawnPos = position().add(0, 0.01, 0);
 
 			java.util.UUID newTaskId = java.util.UUID.randomUUID();
@@ -539,7 +524,11 @@ public class AirCourierEntity extends Entity implements Container {
 
 	@Override
 	public boolean shouldBeSaved() {
-		return getPhase() == Phase.WAITING;
+		return isManualWaiting();
+	}
+
+	private boolean isManualWaiting() {
+		return isAlive() && getPhase() == Phase.WAITING && !getEntityData().get(DATA_TASK_PROXY);
 	}
 
 	@Override
@@ -548,6 +537,7 @@ public class AirCourierEntity extends Entity implements Container {
 		builder.define(DATA_PHASE, (byte) Phase.WAITING.id);
 		builder.define(DATA_LAUNCH_DIRECTION, new Vector3f(0, 0, 1));
 		builder.define(DATA_MISSION, (byte) Mission.PACKAGE_TO_PLAYER.id);
+		builder.define(DATA_TASK_PROXY, false);
 	}
 
 	@Override
@@ -609,7 +599,6 @@ public class AirCourierEntity extends Entity implements Container {
 		}
 		if (getPhase() == Phase.TAKEOFF) {
 			setDeltaMovement(serverMotion);
-			snapRotationToMotion();
 			return;
 		}
 		if (getDeltaMovement().lengthSqr() < 1.0E-6) {

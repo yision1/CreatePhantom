@@ -187,18 +187,6 @@ final class PhantomPortInventory {
 		return true;
 	}
 
-	boolean canReceivePackage(ItemStack box) {
-		return addPackage(box.copy(), true);
-	}
-
-	boolean receivePackage(ItemStack box) {
-		if (!canReceivePackage(box)) {
-			return false;
-		}
-		addPackage(box.copy(), false);
-		return true;
-	}
-
 	boolean canReceiveCarrier() {
 		ItemStack carrier = AllItems.MINI_PHANTOM.asStack();
 		return carrierInventory.insertItem(0, carrier, true).isEmpty();
@@ -216,15 +204,14 @@ final class PhantomPortInventory {
 		carrierInventory.insertItem(0, carrier, false);
 	}
 
-	void dropOneCarrier() {
-		ItemStack carrier = extractOneCarrier(false);
-		if (carrier.isEmpty() || port.getLevel() == null) {
-			return;
-		}
+	boolean dropOneCarrier() {
+		ItemStack carrier = extractOneCarrier(true);
+		if (carrier.isEmpty() || port.getLevel() == null) return false;
 		BlockPos pos = port.getBlockPos();
-		port.getLevel().addFreshEntity(
-			new ItemEntity(port.getLevel(), pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-				carrier.copy()));
+		if (!port.getLevel().addFreshEntity(new ItemEntity(port.getLevel(),
+			pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, carrier.copy()))) return false;
+		extractOneCarrier(false);
+		return true;
 	}
 
 	void dropAllCarriers() {

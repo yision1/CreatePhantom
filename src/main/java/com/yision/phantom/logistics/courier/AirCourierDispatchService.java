@@ -1,7 +1,7 @@
 package com.yision.phantom.logistics.courier;
 
 import com.simibubi.create.content.logistics.box.PackageItem;
-import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
+import com.yision.phantom.entity.courier.AirCourierEntity;
 import com.yision.phantom.logistics.address.PhantomAddressRules;
 import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry;
 import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry.TargetLocation;
@@ -10,7 +10,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
@@ -28,8 +27,7 @@ public final class AirCourierDispatchService {
 			return new AirCourierTarget.PlayerTarget(player.getUUID(), player.serverLevel().dimension());
 		}
 
-		AirCourierTarget.PhantomPortTarget phantomPort = findPhantomPortExcludingSource(level, box, origin, sourceDimension, sourcePos);
-		return phantomPort;
+		return findPhantomPortExcludingSource(level, box, origin, sourceDimension, sourcePos);
 	}
 
 	private static @Nullable AirCourierTarget.PhantomPortTarget findPhantomPortExcludingSource(ServerLevel level, ItemStack box,
@@ -58,8 +56,7 @@ public final class AirCourierDispatchService {
 			case AirCourierTarget.PlayerTarget playerTarget -> {
 				ServerPlayer player = level.getServer().getPlayerList().getPlayer(playerTarget.playerId());
 				yield player != null && player.isAlive()
-					&& player.serverLevel().dimension().equals(playerTarget.dimension())
-					&& AirCourierHelper.canReceiveDelivery(player, box);
+					&& player.serverLevel().dimension().equals(playerTarget.dimension());
 			}
 			case AirCourierTarget.PhantomPortTarget phantomPortTarget ->
 				canReceivePhantomPortTarget(level, new TargetLocation(phantomPortTarget.dimension(), phantomPortTarget.pos(), ""), box);
@@ -67,21 +64,8 @@ public final class AirCourierDispatchService {
 	}
 
 	private static boolean canReceivePhantomPortTarget(ServerLevel level, TargetLocation target, ItemStack box) {
-		ServerLevel targetLevel = level.getServer().getLevel(target.dimension());
-		if (targetLevel == null || !targetLevel.isPositionEntityTicking(target.pos())) {
-			return false;
-		}
-		BlockEntity blockEntity = targetLevel.getBlockEntity(target.pos());
-		return blockEntity instanceof PhantomPortBlockEntity phantomPort && phantomPort.canReceiveCourier(box);
+		return AirCourierDeliveryService.targetState(level.getServer(), AirCourierEntity.Mission.PACKAGE_TO_AIRPORT,
+			target.dimension(), target.pos(), null, box) == AirCourierDeliveryService.TargetState.AVAILABLE;
 	}
 
-	public static boolean canReceiveCarrierTarget(ServerLevel level,
-		ResourceKey<Level> targetDimension, BlockPos targetPos) {
-		ServerLevel targetLevel = level.getServer().getLevel(targetDimension);
-		if (targetLevel == null || !targetLevel.isPositionEntityTicking(targetPos)) {
-			return false;
-		}
-		return targetLevel.getBlockEntity(targetPos) instanceof PhantomPortBlockEntity phantomPort
-			&& phantomPort.canReceiveCarrier();
-	}
 }
