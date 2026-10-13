@@ -1,6 +1,6 @@
 package com.yision.phantom.client.gui.hud;
 
-import com.simibubi.create.content.logistics.packager.InventorySummary;
+import com.yision.phantom.compat.fluidlogistics.FluidLogisticsPackageCompat;
 import com.yision.phantom.content.logistics.tunablePortableTicker.StockKeeperRequestScreenAccess;
 import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerLocator;
 import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerMenu;
@@ -17,7 +17,6 @@ final class StockTickerItemRenderer extends TunablePortableTickerScreen {
 	private StockTickerItemRenderer(Inventory inventory) {
 		super(new TunablePortableTickerMenu(0, inventory, TunablePortableTickerLocator.EMPTY, 0, null),
 			inventory, Component.empty());
-		// Only the native entry renderer is used; no screen is initialized or opened.
 		minecraft = Minecraft.getInstance();
 		font = minecraft.font;
 	}
@@ -29,13 +28,11 @@ final class StockTickerItemRenderer extends TunablePortableTickerScreen {
 			|| renderer.getMenu().getStockData().getLevel() != minecraft.level)
 			renderer = new StockTickerItemRenderer(player.getInventory());
 		renderer.font = minecraft.font;
-		InventorySummary summary = new InventorySummary();
-		summary.add(stack);
+		var entry = FluidLogisticsPackageCompat.getDisplayEntry(stack);
 		graphics.pose().pushPose();
 		try {
 			graphics.pose().translate(x - 1, y - 1, 0);
-			for (var entry : summary.getStacksByCount())
-				((StockKeeperRequestScreenAccess) (Object) renderer).createphantom$renderItemEntry(graphics, 1, entry, false, true);
+			((StockKeeperRequestScreenAccess) (Object) renderer).createphantom$renderItemEntry(graphics, 1, entry, false, true);
 		} finally {
 			graphics.pose().popPose();
 		}
