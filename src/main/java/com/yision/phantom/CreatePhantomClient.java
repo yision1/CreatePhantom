@@ -1,27 +1,29 @@
 package com.yision.phantom;
 
 import com.yision.phantom.client.AllKeys;
-import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerKeyHandler;
 import com.yision.phantom.client.gui.hud.AirCourierHudOverlay;
+import com.yision.phantom.client.render.AirCourierEntityRenderer;
 import com.yision.phantom.config.AllConfigs;
+import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerKeyHandler;
+import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerScreen;
 import com.yision.phantom.item.storagecard.StorageChannelExtensionCardClientHandler;
 import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
 import com.yision.phantom.ponder.CreatePhantomPonderPlugin;
 import com.yision.phantom.registry.AllEntityTypes;
 import com.yision.phantom.registry.AllItems;
-import com.yision.phantom.client.render.AirCourierEntityRenderer;
-import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerScreen;
+
 import net.createmod.catnip.config.ui.BaseConfigScreen;
 import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.client.renderer.item.ItemProperties;
+import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.resources.ResourceLocation;
+
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.fml.ModContainer;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
@@ -36,6 +38,7 @@ public class CreatePhantomClient {
 		modEventBus.addListener(AllKeys::register);
 
 		NeoForge.EVENT_BUS.addListener(AirCourierHudOverlay::render);
+		NeoForge.EVENT_BUS.addListener(AirCourierHudOverlay::onLoggingOut);
 		NeoForge.EVENT_BUS.addListener(StorageChannelExtensionCardClientHandler::onClientTick);
 		TunablePortableTickerKeyHandler.register();
 
@@ -62,7 +65,8 @@ public class CreatePhantomClient {
 			ItemProperties.register(
 				AllItems.TUNABLE_PORTABLE_TICKER.get(),
 				ResourceLocation.fromNamespaceAndPath(CreatePhantom.MODID, "open"),
-				(stack, level, entity, seed) -> Minecraft.getInstance().screen instanceof TunablePortableTickerScreen ? 1.0F : 0.0F
+				(stack, level, entity, seed) ->
+					Minecraft.getInstance().screen instanceof TunablePortableTickerScreen ? 1.0F : 0.0F
 			);
 		});
 		CreatePhantom.LOGGER.debug("Initialized client hooks for {}", CreatePhantom.NAME);

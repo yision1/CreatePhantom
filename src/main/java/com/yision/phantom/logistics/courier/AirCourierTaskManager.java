@@ -1,18 +1,21 @@
 package com.yision.phantom.logistics.courier;
 
-import com.yision.phantom.entity.courier.AirCourierEntity;
-import net.minecraft.core.BlockPos;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import org.jetbrains.annotations.Nullable;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import org.jetbrains.annotations.Nullable;
+
+import com.yision.phantom.entity.courier.AirCourierEntity;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 public final class AirCourierTaskManager {
 	private static @Nullable AirCourierTaskSavedData savedData;
@@ -89,11 +92,14 @@ public final class AirCourierTaskManager {
 		}
 	}
 
-	public static List<AirCourierTask.AirCourierTaskSnapshot> getSnapshots(MinecraftServer server) {
-		if (savedData == null) return List.of();
+	public static List<AirCourierTask.AirCourierTaskSnapshot> getHudSnapshots(MinecraftServer server) {
+		if (savedData == null)
+			return List.of();
 		List<AirCourierTask.AirCourierTaskSnapshot> snapshots = new ArrayList<>();
 		for (AirCourierTask task : savedData.getTasks()) {
-			if (task.isRemoved()) continue;
+			UUID playerId = task.getHudTrackingPlayerId();
+			if (task.isRemoved() || playerId == null || server.getPlayerList().getPlayer(playerId) == null)
+				continue;
 			snapshots.add(task.snapshot(server));
 		}
 		return snapshots;

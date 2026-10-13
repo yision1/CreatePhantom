@@ -1,26 +1,29 @@
 package com.yision.phantom.logistics.courier.hud;
 
 import java.util.List;
-import net.createmod.catnip.codecs.stream.CatnipStreamCodecBuilders;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import java.util.UUID;
+
 import net.minecraft.world.item.ItemStack;
 
 public record AirCourierHudEntry(
+	UUID id,
 	AirCourierHudStatus status,
 	int etaSeconds,
 	List<ItemStack> displayStacks
 ) {
-	public static final StreamCodec<RegistryFriendlyByteBuf, AirCourierHudEntry> STREAM_CODEC =
-		StreamCodec.composite(
-			ByteBufCodecs.VAR_INT, entry -> entry.status().ordinal(),
-			ByteBufCodecs.INT, AirCourierHudEntry::etaSeconds,
-			CatnipStreamCodecBuilders.list(ItemStack.OPTIONAL_STREAM_CODEC), AirCourierHudEntry::displayStacks,
-			(statusId, etaSeconds, displayStacks) ->
-				new AirCourierHudEntry(AirCourierHudStatus.byId(statusId), etaSeconds, displayStacks));
-
 	public AirCourierHudEntry {
-		displayStacks = AirCourierPackagePreview.copyDisplayStacks(displayStacks);
+		displayStacks = List.copyOf(displayStacks);
+	}
+
+	public boolean hasSameContents(AirCourierHudEntry other) {
+		if (displayStacks == other.displayStacks)
+			return true;
+		if (displayStacks.size() != other.displayStacks.size())
+			return false;
+		for (int i = 0; i < displayStacks.size(); i++) {
+			if (!ItemStack.matches(displayStacks.get(i), other.displayStacks.get(i)))
+				return false;
+		}
+		return true;
 	}
 }

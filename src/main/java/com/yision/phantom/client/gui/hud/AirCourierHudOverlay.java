@@ -1,19 +1,28 @@
 package com.yision.phantom.client.gui.hud;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
+
+import com.simibubi.create.content.logistics.BigItemStack;
+import com.yision.phantom.CreatePhantom;
+import com.yision.phantom.compat.fluidlogistics.FluidLogisticsPackageCompat;
 import com.yision.phantom.config.AllConfigs;
 import com.yision.phantom.config.CPClient.AirCourierHudPlacement;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudEntry;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudPayload;
 import com.yision.phantom.logistics.courier.hud.AirCourierPackagePreview;
-import com.yision.phantom.CreatePhantom;
-import java.util.ArrayList;
-import java.util.List;
-import net.minecraft.client.gui.GuiGraphics;
+import com.yision.phantom.network.courier.AirCourierHudPacket;
+
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemStack;
+
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 
 public final class AirCourierHudOverlay {
@@ -41,6 +50,7 @@ public final class AirCourierHudOverlay {
 
 	private record RenderedEntry(
 		AirCourierHudEntry entry,
+		List<BigItemStack> displayEntries,
 		Component statusText,
 		Component addressText,
 		int statusWidth,
@@ -49,22 +59,29 @@ public final class AirCourierHudOverlay {
 
 	private AirCourierHudOverlay() {}
 
-	public static void updateState(AirCourierHudPayload payload) {
-		AirCourierHudPayload incoming = payload == null ? AirCourierHudPayload.hidden() : payload;
-		if (incoming.visible()) {
-			displayedPayload = incoming;
+	public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+		displayedPayload = AirCourierHudPayload.hidden();
+		hideRequestedAtMillis = -1;
+		renderedEntries.clear();
+		StockTickerItemRenderer.clear();
+	}
+
+	public static void updateState(AirCourierHudPacket packet) {
+		displayedPayload = packet.applyTo(displayedPayload);
+		if (displayedPayload.visible()) {
 			hideRequestedAtMillis = -1;
 			rebuildRenderedEntries();
 		} else {
 			if (hideRequestedAtMillis < 0) {
-				hideRequestedAtMillis = System.currentTimeMillis();
+				hideRequestedAtMillis = Util.getMillis();
 			}
 		}
 	}
 
 	public static void render(RenderGuiEvent.Post event) {
 		Minecraft minecraft = Minecraft.getInstance();
-		if (minecraft.player == null || minecraft.level == null || minecraft.options.hideGui || minecraft.screen != null) {
+		if (minecraft.player == null || minecraft.level == null
+			|| minecraft.options.hideGui || minecraft.screen != null) {
 			return;
 		}
 
@@ -73,12 +90,8 @@ public final class AirCourierHudOverlay {
 			return;
 		}
 
-		if (!displayedPayload.visible()) {
-			return;
-		}
-
 		if (hideRequestedAtMillis > 0) {
-			long elapsed = System.currentTimeMillis() - hideRequestedAtMillis;
+			long elapsed = Util.getMillis() - hideRequestedAtMillis;
 			if (elapsed >= HIDE_HOLD_MILLIS) {
 				displayedPayload = AirCourierHudPayload.hidden();
 				hideRequestedAtMillis = -1;
@@ -131,15 +144,15 @@ public final class AirCourierHudOverlay {
 		graphics.drawString(minecraft.font, rendered.addressText(),
 			ADDRESS_BOX_X + (ADDRESS_BOX_WIDTH - rendered.addressWidth()) / 2, ADDRESS_BOX_Y, 0x555555, false);
 
-		List<ItemStack> displayStacks = rendered.entry().displayStacks();
-		for (int slot = 0; slot < displayStacks.size() && slot < AirCourierPackagePreview.MAX_DISPLAY_STACKS; slot++) {
-			var stack = displayStacks.get(slot);
-			if (stack.isEmpty()) {
+		List<BigItemStack> displayEntries = rendered.displayEntries();
+		for (int slot = 0; slot < displayEntries.size() && slot < AirCourierPackagePreview.MAX_DISPLAY_STACKS; slot++) {
+			var entry = displayEntries.get(slot);
+			if (entry.stack.isEmpty()) {
 				continue;
 			}
 
 			int slotX = SLOT_X + SLOT_SPACING * slot;
-			StockTickerItemRenderer.render(graphics, stack, slotX, SLOT_Y);
+			StockTickerItemRenderer.render(graphics, entry, slotX, SLOT_Y);
 		}
 	}
 
@@ -153,16 +166,24 @@ public final class AirCourierHudOverlay {
 	}
 
 	private static void rebuildRenderedEntries() {
-		renderedEntries.clear();
+		var previous = new HashMap<UUID, RenderedEntry>();
+		for (RenderedEntry entry : renderedEntries)
+			previous.put(entry.entry().id(), entry);
+		List<RenderedEntry> updated = new ArrayList<>();
 		Minecraft minecraft = Minecraft.getInstance();
 		for (AirCourierHudEntry entry : displayedPayload.entries()) {
+			RenderedEntry old = previous.get(entry.id());
+			List<BigItemStack> displayEntries = old != null && entry.hasSameContents(old.entry())
+				? old.displayEntries() : entry.displayStacks().stream()
+					.map(FluidLogisticsPackageCompat::getDisplayEntry).toList();
 			Component statusText = entry.status().asComponent();
 			Component addressText = Component.translatable("gui.createphantom.phantomport.arrival_time_display",
 				formatEta(entry.etaSeconds()));
 			int statusWidth = minecraft.font != null ? minecraft.font.width(statusText) : 0;
 			int addressWidth = minecraft.font != null ? minecraft.font.width(addressText) : 0;
-			renderedEntries.add(new RenderedEntry(entry, statusText, addressText, statusWidth, addressWidth));
+			updated.add(new RenderedEntry(entry, displayEntries, statusText, addressText, statusWidth, addressWidth));
 		}
+		renderedEntries = updated;
 	}
 
 	private static AirCourierHudPlacement getPlacement() {
