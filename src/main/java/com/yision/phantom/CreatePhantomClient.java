@@ -4,6 +4,7 @@ import com.yision.phantom.client.AllKeys;
 import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerKeyHandler;
 import com.yision.phantom.client.gui.hud.AirCourierHudOverlay;
 import com.yision.phantom.config.AllConfigs;
+import com.yision.phantom.item.storagecard.StorageChannelExtensionCardClientHandler;
 import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
 import com.yision.phantom.ponder.CreatePhantomPonderPlugin;
 import com.yision.phantom.registry.AllEntityTypes;
@@ -35,6 +36,7 @@ public class CreatePhantomClient {
 		modEventBus.addListener(AllKeys::register);
 
 		NeoForge.EVENT_BUS.addListener(AirCourierHudOverlay::render);
+		NeoForge.EVENT_BUS.addListener(StorageChannelExtensionCardClientHandler::onClientTick);
 		TunablePortableTickerKeyHandler.register();
 
 		registerConfigScreen(modContainer);
