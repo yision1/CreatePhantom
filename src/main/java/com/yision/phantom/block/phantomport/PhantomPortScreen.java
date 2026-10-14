@@ -6,8 +6,8 @@ import java.util.function.Consumer;
 
 import com.google.common.collect.ImmutableList;
 import com.mojang.blaze3d.platform.InputConstants;
-import com.simibubi.create.content.logistics.packagePort.PackagePortMenu;
 import com.simibubi.create.content.logistics.packagePort.PackagePortConfigurationPacket;
+import com.simibubi.create.content.logistics.packagePort.PackagePortMenu;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
@@ -149,7 +149,7 @@ public class PhantomPortScreen extends AbstractSimiContainerScreen<PackagePortMe
 		}
 
 		GuiGameElement.of(icon).<GuiGameElement.GuiRenderBuilder>at(x + WINDOW_WIDTH + 6,
-			y + WINDOW_HEIGHT - 56, -200)
+				y + WINDOW_HEIGHT - 56, -200)
 			.scale(4)
 			.render(graphics);
 
@@ -166,14 +166,14 @@ public class PhantomPortScreen extends AbstractSimiContainerScreen<PackagePortMe
 
 		if (addressBox.isHovered()) {
 			graphics.renderComponentTooltip(font, List.of(CreateLang.translate("gui.package_port.catch_packages")
-				.color(AbstractSimiWidget.HEADER_RGB)
-				.component(),
-				CreateLang.translate("gui.package_port.catch_packages_empty")
-					.style(ChatFormatting.GRAY)
-					.component(),
-				CreateLang.translate("gui.package_port.catch_packages_wildcard")
-					.style(ChatFormatting.GRAY)
-					.component()),
+						.color(AbstractSimiWidget.HEADER_RGB)
+						.component(),
+					CreateLang.translate("gui.package_port.catch_packages_empty")
+						.style(ChatFormatting.GRAY)
+						.component(),
+					CreateLang.translate("gui.package_port.catch_packages_wildcard")
+						.style(ChatFormatting.GRAY)
+						.component()),
 				mouseX, mouseY);
 		}
 	}

@@ -1,5 +1,13 @@
 package com.yision.phantom.block.phantomport;
 
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.logistics.address.PhantomAddressRules;
@@ -7,18 +15,14 @@ import com.yision.phantom.logistics.courier.AirCourierDispatchService;
 import com.yision.phantom.logistics.courier.AirCourierHelper;
 import com.yision.phantom.logistics.courier.AirCourierTarget;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
+
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.items.IItemHandler;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import net.neoforged.neoforge.items.IItemHandler;
 
 final class PhantomPortDispatchAccess {
 
@@ -31,8 +35,8 @@ final class PhantomPortDispatchAccess {
 	private final Map<Integer, PendingHudEntry> pendingHudEntries = new HashMap<>();
 
 	PhantomPortDispatchAccess(PhantomPortBlockEntity port,
-							  PhantomPortInventory inventory,
-							  PhantomPortBeltAccess beltAccess) {
+		PhantomPortInventory inventory,
+		PhantomPortBeltAccess beltAccess) {
 		this.port = port;
 		this.inventory = inventory;
 		this.beltAccess = beltAccess;
@@ -112,7 +116,8 @@ final class PhantomPortDispatchAccess {
 							UUID hudEntryId = candidate.hudEntryId();
 							if (hudEntryId != null) {
 								MiniPhantomItem.setHudEntryId(extracted, hudEntryId);
-								AirCourierHudSync.onCourierPreparing(player, MiniPhantomItem.copyCargoPackage(extracted), hudEntryId);
+								AirCourierHudSync.onCourierPreparing(player,
+									MiniPhantomItem.copyCargoPackage(extracted), hudEntryId);
 							}
 						}
 					}
@@ -266,8 +271,10 @@ final class PhantomPortDispatchAccess {
 		return -1;
 	}
 
-	private record PendingHudEntry(UUID hudEntryId, ItemStack packageSnapshot) {}
+	private record PendingHudEntry(UUID hudEntryId, ItemStack packageSnapshot) {
+	}
 
 	private record DispatchCandidate(int packageSlot, ItemStack phantomStack,
-									 @Nullable AirCourierTarget target, @Nullable UUID hudEntryId) {}
+									 @Nullable AirCourierTarget target, @Nullable UUID hudEntryId) {
+	}
 }

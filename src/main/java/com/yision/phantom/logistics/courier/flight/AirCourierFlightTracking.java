@@ -1,10 +1,11 @@
 package com.yision.phantom.logistics.courier.flight;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.Nullable;
 
 public final class AirCourierFlightTracking {
 
@@ -29,7 +30,8 @@ public final class AirCourierFlightTracking {
 		boolean continuous = lastPosition != null && tick == lastSampleTick + 1 && !changedDimension;
 		Vec3 displacement = continuous ? position.subtract(lastPosition) : Vec3.ZERO;
 		boolean reposition = changedDimension || displacement.lengthSqr() > REPOSITION_DISTANCE_SQR;
-		if (displacement.lengthSqr() > 1.0E-6 || changedDimension) hasMoved = true;
+		if (displacement.lengthSqr() > 1.0E-6 || changedDimension)
+			hasMoved = true;
 		movement = reposition ? Vec3.ZERO : displacement;
 		smoothedMovement = continuous && !reposition
 			? smoothedMovement.lerp(movement, MOVEMENT_SMOOTHING) : Vec3.ZERO;
@@ -73,7 +75,8 @@ public final class AirCourierFlightTracking {
 	}
 
 	public void beginFinalApproach(Vec3 position, Vec3 target) {
-		if (isFinalApproach()) return;
+		if (isFinalApproach())
+			return;
 		Vec3 offset = position.subtract(target);
 		finalApproachOffset = offset.lengthSqr() > FINAL_APPROACH_DISTANCE * FINAL_APPROACH_DISTANCE
 			? offset.normalize().scale(FINAL_APPROACH_DISTANCE) : offset;
@@ -102,7 +105,8 @@ public final class AirCourierFlightTracking {
 		CompoundTag tag = new CompoundTag();
 		tag.putBoolean("HasMoved", hasMoved);
 		tag.put("InheritedMovement", saveVector(inheritedMovement));
-		if (finalApproachOffset != null) tag.put("FinalApproachOffset", saveVector(finalApproachOffset));
+		if (finalApproachOffset != null)
+			tag.put("FinalApproachOffset", saveVector(finalApproachOffset));
 		return tag;
 	}
 
@@ -110,7 +114,8 @@ public final class AirCourierFlightTracking {
 		reset();
 		hasMoved = tag.getBoolean("HasMoved");
 		inheritedMovement = loadVector(tag.getCompound("InheritedMovement"));
-		if (tag.contains("FinalApproachOffset")) finalApproachOffset = loadVector(tag.getCompound("FinalApproachOffset"));
+		if (tag.contains("FinalApproachOffset"))
+			finalApproachOffset = loadVector(tag.getCompound("FinalApproachOffset"));
 	}
 
 	private static CompoundTag saveVector(Vec3 vector) {

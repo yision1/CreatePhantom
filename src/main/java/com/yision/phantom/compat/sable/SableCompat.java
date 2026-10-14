@@ -1,14 +1,17 @@
 package com.yision.phantom.compat.sable;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+
 import net.neoforged.fml.ModList;
-import org.jetbrains.annotations.Nullable;
 
 public final class SableCompat {
 	private static final String SABLE_MOD_ID = "sable";
 
-	private SableCompat() {}
+	private SableCompat() {
+	}
 
 	public static Vec3 projectOutOfSubLevel(@Nullable Level level, Vec3 position) {
 		if (level == null || !isLoaded()) {

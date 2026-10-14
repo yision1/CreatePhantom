@@ -1,5 +1,7 @@
 package com.yision.phantom;
 
+import org.slf4j.Logger;
+
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.foundation.item.ItemDescription;
@@ -7,28 +9,29 @@ import com.simibubi.create.foundation.item.KineticStats;
 import com.simibubi.create.foundation.item.TooltipModifier;
 import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry;
 import com.yision.phantom.config.AllConfigs;
+import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerSession;
 import com.yision.phantom.logistics.courier.AirCourierTaskManager;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
-import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerSession;
 import com.yision.phantom.network.AllPackets;
 import com.yision.phantom.registry.AllAttachmentTypes;
 import com.yision.phantom.registry.AllBlockEntityTypes;
-import com.yision.phantom.registry.AllCapabilities;
 import com.yision.phantom.registry.AllBlocks;
+import com.yision.phantom.registry.AllCapabilities;
 import com.yision.phantom.registry.AllCreativeModeTabs;
 import com.yision.phantom.registry.AllDataComponents;
 import com.yision.phantom.registry.AllEntityTypes;
 import com.yision.phantom.registry.AllItems;
 import com.yision.phantom.registry.AllMenuTypes;
+
 import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
+
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
-import org.slf4j.Logger;
 
 @Mod(CreatePhantom.MODID)
 public class CreatePhantom {
@@ -68,13 +71,14 @@ public class CreatePhantom {
 			PhantomPortTargetRegistry.clearAll();
 			TunablePortableTickerSession.clearAll();
 		});
-		NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) -> {
-			if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
-				AirCourierTaskManager.onPlayerLoggedOut(player);
-				AirCourierHudSync.clearPlayer(player);
-				TunablePortableTickerSession.clearPlayer(player);
-			}
-		});
+		NeoForge.EVENT_BUS.addListener(
+			(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) -> {
+				if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+					AirCourierTaskManager.onPlayerLoggedOut(player);
+					AirCourierHudSync.clearPlayer(player);
+					TunablePortableTickerSession.clearPlayer(player);
+				}
+			});
 	}
 
 	public static ResourceLocation asResource(String path) {

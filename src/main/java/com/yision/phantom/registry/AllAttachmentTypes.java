@@ -1,8 +1,10 @@
 package com.yision.phantom.registry;
 
+import java.util.function.Supplier;
+
 import com.yision.phantom.CreatePhantom;
 import com.yision.phantom.item.miniphantom.PlayerMiniPhantomClipboardInventory;
-import java.util.function.Supplier;
+
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -18,7 +20,8 @@ public final class AllAttachmentTypes {
 				.copyOnDeath()
 				.build());
 
-	private AllAttachmentTypes() {}
+	private AllAttachmentTypes() {
+	}
 
 	public static void register(IEventBus modEventBus) {
 		ATTACHMENT_TYPES.register(modEventBus);

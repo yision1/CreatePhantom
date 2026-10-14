@@ -95,12 +95,6 @@ configurations {
     runtimeClasspath.extendsFrom localRuntime
 }
 
-tasks.named('test', org.gradle.api.tasks.testing.Test).configure {
-    enabled = false
-    classpath = files()
-    testClassesDirs = files()
-}
-
 dependencies {
     api("dev.ryanhcode.sable:sable-common-${project.minecraft_version}:${project.sable_version}")
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
@@ -119,20 +113,20 @@ dependencies {
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
-            minecraft_version      : minecraft_version,
-            minecraft_version_range: minecraft_version_range,
-            neo_version            : neo_version,
-            loader_version_range   : loader_version_range,
-            mod_id                 : mod_id,
-            mod_name               : mod_name,
-            mod_license            : mod_license,
-            mod_version            : mod_version,
-            mod_authors            : mod_authors,
-            mod_description        : mod_description,
-            create_version_range   : create_version_range,
-            fluidlogistics_version_range: fluidlogistics_version_range,
-            curios_version_range           : curios_version_range,
-            sable_version_range            : sable_version_range
+        minecraft_version           : minecraft_version,
+        minecraft_version_range     : minecraft_version_range,
+        neo_version                 : neo_version,
+        loader_version_range        : loader_version_range,
+        mod_id                      : mod_id,
+        mod_name                    : mod_name,
+        mod_license                 : mod_license,
+        mod_version                 : mod_version,
+        mod_authors                 : mod_authors,
+        mod_description             : mod_description,
+        create_version_range        : create_version_range,
+        fluidlogistics_version_range: fluidlogistics_version_range,
+        curios_version_range        : curios_version_range,
+        sable_version_range         : sable_version_range
     ]
     inputs.properties replaceProperties
     expand replaceProperties

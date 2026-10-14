@@ -1,18 +1,23 @@
 package com.yision.phantom.entity.courier;
 
+import java.util.UUID;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
+
 import com.simibubi.create.content.logistics.box.PackageItem;
+import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.logistics.courier.AirCourierDispatchService;
 import com.yision.phantom.logistics.courier.AirCourierTarget;
-import com.yision.phantom.logistics.courier.flight.AirCourierFlightMath;
-import com.yision.phantom.logistics.courier.flight.AirCourierFlightProfile;
 import com.yision.phantom.logistics.courier.AirCourierTask;
 import com.yision.phantom.logistics.courier.AirCourierTaskManager;
+import com.yision.phantom.logistics.courier.flight.AirCourierFlightMath;
+import com.yision.phantom.logistics.courier.flight.AirCourierFlightProfile;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
-import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.registry.AllEntityTypes;
-import java.util.UUID;
+
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -25,21 +30,19 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.Container;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+
 import net.neoforged.neoforge.items.ItemStackHandler;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3f;
 
 public class AirCourierEntity extends Entity implements Container {
 	private static final EntityDataAccessor<ItemStack> DATA_PACKAGE =
@@ -161,14 +164,16 @@ public class AirCourierEntity extends Entity implements Container {
 		if (getPhase() == Phase.TAKEOFF) {
 			if (tickCount % 3 == 0) {
 				Vec3 trail = getDeltaMovement().scale(-0.2);
-				level().addParticle(ParticleTypes.CLOUD, getX(), getY(), getZ(), trail.x, Math.max(trail.y, 0.02), trail.z);
+				level().addParticle(ParticleTypes.CLOUD, getX(), getY(), getZ(), trail.x, Math.max(trail.y, 0.02),
+					trail.z);
 			}
 			return;
 		}
 
 		if (getPhase() == Phase.LANDING && tickCount % 3 == 0) {
 			Vec3 trail = getDeltaMovement().scale(-0.2);
-			level().addParticle(ParticleTypes.CLOUD, getX(), getY(), getZ(), trail.x, Math.max(trail.y, 0.02), trail.z);
+			level().addParticle(ParticleTypes.CLOUD, getX(), getY(), getZ(), trail.x, Math.max(trail.y, 0.02),
+				trail.z);
 		}
 	}
 
@@ -304,7 +309,8 @@ public class AirCourierEntity extends Entity implements Container {
 	}
 
 	private void syncLaunchDirectionFromEntityData() {
-		Vec3 syncedDirection = AirCourierFlightMath.sanitizeNonNegativeDirection(fromSyncedLaunchDirection(getEntityData().get(DATA_LAUNCH_DIRECTION)));
+		Vec3 syncedDirection = AirCourierFlightMath.sanitizeNonNegativeDirection(
+			fromSyncedLaunchDirection(getEntityData().get(DATA_LAUNCH_DIRECTION)));
 		if (syncedDirection.distanceToSqr(launchDirection) > 1.0E-6) {
 			launchDirection = syncedDirection;
 		}
@@ -367,10 +373,12 @@ public class AirCourierEntity extends Entity implements Container {
 	}
 
 	@Override
-	public void setItem(int slot, ItemStack stack) {}
+	public void setItem(int slot, ItemStack stack) {
+	}
 
 	@Override
-	public void setChanged() {}
+	public void setChanged() {
+	}
 
 	@Override
 	public boolean stillValid(Player player) {
@@ -378,7 +386,8 @@ public class AirCourierEntity extends Entity implements Container {
 	}
 
 	@Override
-	public void clearContent() {}
+	public void clearContent() {
+	}
 
 	@Override
 	public ItemStack getPickedResult(HitResult target) {
@@ -449,8 +458,9 @@ public class AirCourierEntity extends Entity implements Container {
 				return InteractionResult.CONSUME;
 			}
 
-			AirCourierTarget target = AirCourierDispatchService.resolvePackageTarget(serverLevel, getPackage(), position(),
-				null, null);
+			AirCourierTarget target =
+				AirCourierDispatchService.resolvePackageTarget(serverLevel, getPackage(), position(),
+					null, null);
 			if (target == null) {
 				player.displayClientMessage(
 					Component.translatable("gui.createphantom.mini_phantom.invalid_target_phantomport")
@@ -498,7 +508,8 @@ public class AirCourierEntity extends Entity implements Container {
 			AirCourierTaskManager.addTask(serverLevel.getServer(), task);
 			AirCourierHudSync.onCourierTaskStarted(serverLevel.getServer(), task);
 
-			level().playSound(null, blockPosition(), SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 0.8f, 1.0f);
+			level().playSound(null, blockPosition(), SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 0.8f,
+				1.0f);
 			if (!player.getAbilities().instabuild) {
 				heldItem.shrink(1);
 			}

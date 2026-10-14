@@ -5,11 +5,12 @@ import com.mojang.math.Axis;
 import com.yision.phantom.entity.courier.AirCourierEntity;
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.registry.AllItems;
+
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.ItemRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -47,7 +48,8 @@ public class AirCourierEntityRenderer extends EntityRenderer<AirCourierEntity> {
 		if (entity.getPhase() == AirCourierEntity.Phase.WAITING) {
 			poseStack.mulPose(Axis.XP.rotationDegrees(18.0f));
 		}
-		poseStack.mulPose(Axis.ZP.rotationDegrees(-Mth.lerp(partialTick, entity.oldDeltaYaw, entity.newDeltaYaw) * -4.0f));
+		poseStack.mulPose(
+			Axis.ZP.rotationDegrees(-Mth.lerp(partialTick, entity.oldDeltaYaw, entity.newDeltaYaw) * -4.0f));
 
 		float scale = entity.getPhase() == AirCourierEntity.Phase.CRUISE ? 0.58f : 0.66f;
 		float yOffset = entity.getPhase() == AirCourierEntity.Phase.WAITING ? 0.5f : 0.08f;

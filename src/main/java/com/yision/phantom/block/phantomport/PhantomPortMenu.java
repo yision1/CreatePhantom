@@ -1,8 +1,11 @@
 package com.yision.phantom.block.phantomport;
 
+import org.jetbrains.annotations.NotNull;
+
 import com.simibubi.create.content.logistics.packagePort.PackagePortMenu;
 import com.yision.phantom.registry.AllItems;
 import com.yision.phantom.registry.AllMenuTypes;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -13,8 +16,8 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
+
 import net.neoforged.neoforge.items.SlotItemHandler;
-import org.jetbrains.annotations.NotNull;
 
 public class PhantomPortMenu extends PackagePortMenu {
 	public PhantomPortMenu(MenuType<?> type, int id, Inventory inv, RegistryFriendlyByteBuf extraData) {

@@ -1,9 +1,11 @@
 package com.yision.phantom.item.miniphantom;
 
 import com.simibubi.create.AllBlocks;
+
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
+
 import net.neoforged.neoforge.items.ItemStackHandler;
 
 public class PlayerMiniPhantomClipboardInventory extends ItemStackHandler {

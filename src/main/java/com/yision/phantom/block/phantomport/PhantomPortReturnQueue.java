@@ -1,8 +1,15 @@
 package com.yision.phantom.block.phantomport;
 
-import com.yision.phantom.item.miniphantom.MiniPhantomItem;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.UUID;
+
+import org.jetbrains.annotations.Nullable;
+
 import com.yision.phantom.entity.courier.AirCourierEntity;
+import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.logistics.courier.AirCourierDeliveryService;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -15,12 +22,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.neoforged.neoforge.items.IItemHandler;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.UUID;
+import net.neoforged.neoforge.items.IItemHandler;
 
 final class PhantomPortReturnQueue {
 
@@ -33,15 +36,16 @@ final class PhantomPortReturnQueue {
 	private final Deque<PendingReturnCarrier> pendingReturnCarriers = new ArrayDeque<>();
 
 	PhantomPortReturnQueue(PhantomPortBlockEntity port,
-						   PhantomPortInventory inventory,
-						   PhantomPortBeltAccess beltAccess) {
+		PhantomPortInventory inventory,
+		PhantomPortBeltAccess beltAccess) {
 		this.port = port;
 		this.inventory = inventory;
 		this.beltAccess = beltAccess;
 	}
 
 	void tick() {
-		if (pendingReturnCarriers.isEmpty() || !(port.getLevel() instanceof ServerLevel serverLevel)) return;
+		if (pendingReturnCarriers.isEmpty() || !(port.getLevel() instanceof ServerLevel serverLevel))
+			return;
 		if (!inventory.hasUsableCarrier()) {
 			pendingReturnCarriers.clear();
 			port.setChanged();
@@ -61,14 +65,16 @@ final class PhantomPortReturnQueue {
 			AirCourierDeliveryService.TargetState state = task.dropPending()
 				? AirCourierDeliveryService.TargetState.UNAVAILABLE
 				: AirCourierDeliveryService.targetState(serverLevel.getServer(),
-					task.isPlayerReturn() ? AirCourierEntity.Mission.CARRIER_RETURN_TO_PLAYER : AirCourierEntity.Mission.CARRIER_RETURN,
-					task.dimension(), task.pos(), task.playerId(), ItemStack.EMPTY);
+				task.isPlayerReturn() ? AirCourierEntity.Mission.CARRIER_RETURN_TO_PLAYER :
+					AirCourierEntity.Mission.CARRIER_RETURN,
+				task.dimension(), task.pos(), task.playerId(), ItemStack.EMPTY);
 			if (state == AirCourierDeliveryService.TargetState.PLAYER_OFFLINE) {
 				pendingReturnCarriers.addLast(task);
 				continue;
 			}
 			if (state == AirCourierDeliveryService.TargetState.UNAVAILABLE) {
-				if (!inventory.dropOneCarrier()) pendingReturnCarriers.addLast(task.asDropPending());
+				if (!inventory.dropOneCarrier())
+					pendingReturnCarriers.addLast(task.asDropPending());
 			} else if (!tryQueueStoredReturnCarrier(task)) {
 				pendingReturnCarriers.addLast(task.withNextAttempt(gameTime + RETURN_RETRY_INTERVAL_TICKS));
 			}
@@ -98,7 +104,8 @@ final class PhantomPortReturnQueue {
 		@Nullable ResourceKey<Level> returnDimension,
 		@Nullable BlockPos returnPos
 	) {
-		if (!inventory.receiveCourier(box)) return false;
+		if (!inventory.receiveCourier(box))
+			return false;
 		if (returnDimension != null && returnPos != null) {
 			schedulePendingReturnCarrier(returnDimension, returnPos, RETURN_LAUNCH_DELAY_TICKS);
 		}
@@ -123,15 +130,21 @@ final class PhantomPortReturnQueue {
 
 	private boolean tryQueueStoredReturnCarrier(PendingReturnCarrier task) {
 		Direction side = beltAccess.specialSide();
-		if (!beltAccess.hasManualDispatchFunnel(side)) return false;
+		if (!beltAccess.hasManualDispatchFunnel(side))
+			return false;
 		IItemHandler beltHandler = beltAccess.launchBeltHandler(side);
-		if (beltHandler == null) return false;
+		if (beltHandler == null)
+			return false;
 		ItemStack returningCarrier = task.isPlayerReturn()
-			? MiniPhantomItem.returningToPlayer(task.playerId()) : MiniPhantomItem.returningTo(task.dimension(), task.pos());
-		if (!beltHandler.insertItem(0, returningCarrier.copy(), true).isEmpty()) return false;
+			? MiniPhantomItem.returningToPlayer(task.playerId()) :
+			MiniPhantomItem.returningTo(task.dimension(), task.pos());
+		if (!beltHandler.insertItem(0, returningCarrier.copy(), true).isEmpty())
+			return false;
 		ItemStack storedCarrier = inventory.extractOneCarrier(false);
-		if (storedCarrier.isEmpty()) return false;
-		if (beltHandler.insertItem(0, returningCarrier.copy(), false).isEmpty()) return true;
+		if (storedCarrier.isEmpty())
+			return false;
+		if (beltHandler.insertItem(0, returningCarrier.copy(), false).isEmpty())
+			return true;
 		inventory.returnCarrier(storedCarrier);
 		return false;
 	}
@@ -181,7 +194,8 @@ final class PhantomPortReturnQueue {
 						null, null, entry.getUUID("PlayerId"), nextAttempt, !absoluteTime, dropPending));
 				} else if ("phantom_port".equals(type)) {
 					ResourceKey<Level> dim = entry.contains("Dimension")
-						? ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(entry.getString("Dimension")))
+						? ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(entry.getString("Dimension"
+					)))
 						: null;
 					BlockPos pos = entry.contains("Pos")
 						? NbtUtils.readBlockPos(entry, "Pos").orElse(null)

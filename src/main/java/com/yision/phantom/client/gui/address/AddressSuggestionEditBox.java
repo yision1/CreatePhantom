@@ -1,16 +1,19 @@
 package com.yision.phantom.client.gui.address;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.simibubi.create.content.trains.schedule.DestinationSuggestions;
 import java.util.List;
 import java.util.function.Consumer;
+
+import org.lwjgl.glfw.GLFW;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.simibubi.create.content.trains.schedule.DestinationSuggestions;
+
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
-import org.lwjgl.glfw.GLFW;
 
 public class AddressSuggestionEditBox extends EditBox {
 

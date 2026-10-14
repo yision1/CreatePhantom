@@ -1,13 +1,15 @@
 package com.yision.phantom.logistics.courier.flight;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.Nullable;
 
 public final class AirCourierFlightMath {
 
-	private AirCourierFlightMath() {}
+	private AirCourierFlightMath() {
+	}
 
 	public static Vec3 launchMotion(Vec3 direction, double horizontalSpeed) {
 		return sanitizeHorizontalDirection(direction).scale(horizontalSpeed)
@@ -85,8 +87,10 @@ public final class AirCourierFlightMath {
 	public static boolean reachesTarget(Vec3 position, @Nullable Vec3 previousPosition,
 		Vec3 deliveryTarget, Vec3 targetMovement, double completionDistance) {
 		double completionDistanceSqr = completionDistance * completionDistance;
-		if (position.distanceToSqr(deliveryTarget) <= completionDistanceSqr) return true;
-		if (previousPosition == null) return false;
+		if (position.distanceToSqr(deliveryTarget) <= completionDistanceSqr)
+			return true;
+		if (previousPosition == null)
+			return false;
 		Vec3 start = previousPosition.add(targetMovement);
 		Vec3 segment = position.subtract(start);
 		double lengthSqr = segment.lengthSqr();

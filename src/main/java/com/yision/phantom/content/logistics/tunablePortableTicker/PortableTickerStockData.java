@@ -1,28 +1,30 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
-import com.simibubi.create.AllBlockEntityTypes;
-import com.simibubi.create.AllBlocks;
-import com.simibubi.create.content.logistics.stockTicker.StockTickerBlockEntity;
-import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour;
-import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import java.util.List;
 import java.util.UUID;
+
+import com.simibubi.create.AllBlockEntityTypes;
+import com.simibubi.create.AllBlocks;
+import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour;
+import com.simibubi.create.content.logistics.stockTicker.StockTickerBlockEntity;
+import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-/** An unregistered, in-memory projection of the current card for Create's request UI. */
 public final class PortableTickerStockData extends StockTickerBlockEntity {
 	private final Player player;
 	private TunablePortableTickerMenu menu;
 
-	public PortableTickerStockData(Player player, ItemStack ticker, int channel, UUID network, BlockPos queryPosition) {
+	public PortableTickerStockData(Player player, ItemStack ticker, int channel, UUID network,
+		BlockPos queryPosition) {
 		super(AllBlockEntityTypes.STOCK_TICKER.get(), queryPosition, AllBlocks.STOCK_TICKER.getDefaultState());
 		this.player = player;
 		setLevel(player.level());
-		// Native responses do not include the number of contributing links.
 		activeLinks = -1;
 		categories = TunablePortableTickerItem.categoriesFromChannel(ticker, channel);
 		previouslyUsedAddress = network == null ? "" : TunablePortableTickerItem.loadAddress(ticker, network);
@@ -40,7 +42,6 @@ public final class PortableTickerStockData extends StockTickerBlockEntity {
 	}
 
 	public static BlockPos queryPositionFor(Player player) {
-		// Outside the build area, so the native lookup cannot address a real block entity.
 		return new BlockPos(player.getBlockX(), player.level().getMinBuildHeight() - 1, player.getBlockZ());
 	}
 
@@ -82,27 +83,33 @@ public final class PortableTickerStockData extends StockTickerBlockEntity {
 		ClientScreenStorage.request(menu, () -> super.refreshClientStockSnapshot());
 	}
 
-	// SmartBlockEntity calls this from its constructor, before this class is initialized.
 	@Override
-	public void addBehaviours(List<BlockEntityBehaviour> behaviours) {}
+	public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
+	}
 
 	@Override
-	public void initialize() {}
+	public void initialize() {
+	}
 
 	@Override
-	public void tick() {}
+	public void tick() {
+	}
 
 	@Override
-	public void notifyUpdate() {}
+	public void notifyUpdate() {
+	}
 
 	@Override
-	public void sendData() {}
+	public void sendData() {
+	}
 
 	@Override
-	public void setChanged() {}
+	public void setChanged() {
+	}
 
 	@Override
-	public void playEffect() {}
+	public void playEffect() {
+	}
 
 	@Override
 	public void invalidate() {
@@ -110,5 +117,6 @@ public final class PortableTickerStockData extends StockTickerBlockEntity {
 	}
 
 	@Override
-	public void destroy() {}
+	public void destroy() {
+	}
 }

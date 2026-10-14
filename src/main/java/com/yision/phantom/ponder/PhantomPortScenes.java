@@ -1,5 +1,7 @@
 package com.yision.phantom.ponder;
 
+import java.util.List;
+
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.simibubi.create.content.logistics.box.PackageStyles;
 import com.simibubi.create.foundation.ponder.CreateSceneBuilder;
@@ -11,6 +13,7 @@ import com.yision.phantom.entity.courier.AirCourierEntity;
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.logistics.courier.AirCourierHelper;
 import com.yision.phantom.registry.AllItems;
+
 import net.createmod.catnip.math.Pointing;
 import net.createmod.ponder.api.PonderPalette;
 import net.createmod.ponder.api.element.ElementLink;
@@ -30,14 +33,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.List;
-
 public final class PhantomPortScenes {
 	private static final String PLAYER_NAME = "李华";
 	private static final String STATION_NAME = "Factory";
 	private static final String REMOTE_ADDRESS = "Warehouse";
 
-	private PhantomPortScenes() {}
+	private PhantomPortScenes() {
+	}
 
 	public static void automaticPackageTransfer(SceneBuilder builder, SceneBuildingUtil util) {
 		CreateSceneBuilder scene = new CreateSceneBuilder(builder);
@@ -75,7 +77,9 @@ public final class PhantomPortScenes {
 			.colored(PonderPalette.INPUT)
 			.placeNearTarget()
 			.pointAt(util.vector().blockSurface(portPos, Direction.NORTH))
-			.text("A Phantom Port automatically extracts packages from adjacent packagers when their address differs from its name.");
+			.text(
+				"A Phantom Port automatically extracts packages from adjacent packagers when their address differs " +
+					"from its name.");
 		scene.idle(110);
 
 		PonderHilo.packagerClear(scene, packagerPos);
@@ -118,7 +122,9 @@ public final class PhantomPortScenes {
 			.colored(PonderPalette.OUTPUT)
 			.placeNearTarget()
 			.pointAt(util.vector().blockSurface(portPos, Direction.NORTH))
-			.text("A Phantom Port automatically pushes packages whose address matches its name into adjacent packagers.");
+			.text(
+				"A Phantom Port automatically pushes packages whose address matches its name into adjacent packagers" +
+					".");
 		scene.idle(110);
 
 		PonderHilo.packagerUnpack(scene, packagerPos, incomingPackage);

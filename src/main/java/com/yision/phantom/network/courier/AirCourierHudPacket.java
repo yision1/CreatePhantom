@@ -79,7 +79,7 @@ public record AirCourierHudPacket(List<EntryUpdate> updates) implements Clientbo
 	}
 
 	public record EntryUpdate(UUID id, AirCourierHudStatus status, int etaSeconds,
-		Optional<List<ItemStack>> contents) {
+							  Optional<List<ItemStack>> contents) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, EntryUpdate> STREAM_CODEC = StreamCodec.composite(
 			UUIDUtil.STREAM_CODEC, EntryUpdate::id,
 			ByteBufCodecs.VAR_INT, update -> update.status().ordinal(),

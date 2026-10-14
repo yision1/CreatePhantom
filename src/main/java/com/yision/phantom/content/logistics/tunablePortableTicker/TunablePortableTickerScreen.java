@@ -1,10 +1,12 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestScreen;
 import com.yision.phantom.CreatePhantom;
 import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
-import java.util.ArrayList;
-import java.util.List;
+
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
@@ -63,7 +65,8 @@ public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
 	public PortableTickerAddressEditBox createAddressBox(Font font, int x, int y, int width, int height,
 		boolean anchorToBottom) {
 		ItemStack card = TunablePortableTickerItem.getCard(getMenu().getTickerStack(), getMenu().getChannel());
-		List<String> addresses = card.isEmpty() ? List.of() : StorageChannelExtensionCardItem.loadAddressesFromStack(card);
+		List<String> addresses =
+			card.isEmpty() ? List.of() : StorageChannelExtensionCardItem.loadAddressesFromStack(card);
 		return new PortableTickerAddressEditBox(this, font, x, y, width, height, anchorToBottom,
 			"@" + getMenu().player.getName().getString(), addresses);
 	}
@@ -122,7 +125,8 @@ public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
 		saveSession();
 		getMenu().switchingChannel = true;
 		ClientScreenStorage.close(getMenu());
-		CatnipServices.NETWORK.sendToServer(new TunablePortableTickerSelectChannelPacket(getMenu().getLocator(), slot));
+		CatnipServices.NETWORK.sendToServer(new TunablePortableTickerSelectChannelPacket(getMenu().getLocator(),
+			slot));
 	}
 
 	private StockKeeperRequestScreenAccess nativeState() {
@@ -176,9 +180,11 @@ public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
 		if (count < 2)
 			return;
 		for (int i = 0; i < count; i++) {
-			int sourceX = visibleChannels.get(i) == getMenu().getChannel() ? CHANNEL_ACTIVE_SEGMENT_X : CHANNEL_SEGMENT_X;
+			int sourceX =
+				visibleChannels.get(i) == getMenu().getChannel() ? CHANNEL_ACTIVE_SEGMENT_X : CHANNEL_SEGMENT_X;
 			int sourceY = i == 0 ? CHANNEL_TOP_Y : i == count - 1 ? CHANNEL_BOTTOM_Y : CHANNEL_MIDDLE_Y;
-			int sourceHeight = i == 0 ? CHANNEL_TOP_HEIGHT : i == count - 1 ? CHANNEL_BOTTOM_HEIGHT : CHANNEL_MIDDLE_HEIGHT;
+			int sourceHeight =
+				i == 0 ? CHANNEL_TOP_HEIGHT : i == count - 1 ? CHANNEL_BOTTOM_HEIGHT : CHANNEL_MIDDLE_HEIGHT;
 			graphics.blit(CHANNELS, channelBarX, channelBarY + getChannelSegmentY(i), sourceX, sourceY,
 				CHANNEL_SEGMENT_WIDTH, sourceHeight, CHANNELS_TEXTURE_WIDTH, CHANNELS_TEXTURE_HEIGHT);
 		}

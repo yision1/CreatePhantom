@@ -3,8 +3,9 @@ package com.yision.phantom.registry;
 import com.tterrag.registrate.providers.ProviderType;
 import com.tterrag.registrate.util.entry.EntityEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
-import com.yision.phantom.entity.courier.AirCourierEntity;
 import com.yision.phantom.CreatePhantom;
+import com.yision.phantom.entity.courier.AirCourierEntity;
+
 import net.minecraft.world.entity.MobCategory;
 
 public final class AllEntityTypes {
@@ -18,7 +19,9 @@ public final class AllEntityTypes {
 		.setData(ProviderType.LANG, NonNullBiConsumer.noop())
 		.register();
 
-	private AllEntityTypes() {}
+	private AllEntityTypes() {
+	}
 
-	public static void register() {}
+	public static void register() {
+	}
 }

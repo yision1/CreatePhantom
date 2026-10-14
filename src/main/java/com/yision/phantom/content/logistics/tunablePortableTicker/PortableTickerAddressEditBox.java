@@ -1,10 +1,12 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
+import java.util.List;
+
 import com.simibubi.create.content.logistics.AddressEditBox;
 import com.simibubi.create.content.trains.schedule.DestinationSuggestions;
 import com.yision.phantom.client.gui.address.AddressSuggestionEditBoxHelper;
 import com.yision.phantom.mixin.client.AddressEditBoxAccessor;
-import java.util.List;
+
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
 

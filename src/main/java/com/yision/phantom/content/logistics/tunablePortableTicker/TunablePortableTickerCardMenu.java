@@ -1,8 +1,12 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
-import com.yision.phantom.registry.AllMenuTypes;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.jetbrains.annotations.NotNull;
+
+import com.yision.phantom.registry.AllMenuTypes;
+
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -11,12 +15,12 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.items.SlotItemHandler;
-import org.jetbrains.annotations.NotNull;
 
 public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	private static final int PROXY_SLOT_COUNT = 1;
@@ -358,7 +362,8 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	}
 
 	private boolean isOwnerPlayerInventorySlot(Slot slot) {
-		return ownerInventorySlot >= 0 && slot.container == playerInventory && slot.getSlotIndex() == ownerInventorySlot;
+		return ownerInventorySlot >= 0 && slot.container == playerInventory &&
+			slot.getSlotIndex() == ownerInventorySlot;
 	}
 
 	class InactiveCardSlot extends SlotItemHandler {

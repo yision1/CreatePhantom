@@ -1,28 +1,33 @@
 package com.yision.phantom.block.phantomport;
 
-import com.yision.phantom.compat.sable.SableCompat;
-import com.yision.phantom.logistics.address.PhantomAddressRules;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.function.Predicate;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
+
+import org.jetbrains.annotations.Nullable;
+
+import com.yision.phantom.compat.sable.SableCompat;
+import com.yision.phantom.logistics.address.PhantomAddressRules;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import org.jetbrains.annotations.Nullable;
 
 public final class PhantomPortTargetRegistry {
 	private static final int ENTRY_TIMEOUT_TICKS = 60;
 	private static final Map<ResourceKey<Level>, Map<BlockPos, Entry>> TARGETS = new HashMap<>();
 
-	private PhantomPortTargetRegistry() {}
+	private PhantomPortTargetRegistry() {
+	}
 
 	public static void update(ServerLevel level, BlockPos pos, String address) {
 		Map<BlockPos, Entry> entries = TARGETS.computeIfAbsent(level.dimension(), key -> new HashMap<>());
@@ -52,7 +57,8 @@ public final class PhantomPortTargetRegistry {
 			.stream()
 			.filter(entry -> PhantomAddressRules.matches(normalized, entry.getValue().address))
 			.sorted(Comparator
-				.<Map.Entry<BlockPos, Entry>>comparingInt(entry -> exactMatch(normalized, entry.getValue().address) ? 0 : 1)
+				.<Map.Entry<BlockPos, Entry>>comparingInt(
+					entry -> exactMatch(normalized, entry.getValue().address) ? 0 : 1)
 				.thenComparingDouble(entry -> distanceTo(level, origin, entry.getKey()))
 				.thenComparing(entry -> entry.getValue().address))
 			.map(Map.Entry::getKey)
@@ -60,17 +66,21 @@ public final class PhantomPortTargetRegistry {
 			.orElse(null);
 	}
 
-	public static @Nullable TargetLocation findMatchingAnyDimension(ServerLevel level, String address, @Nullable Vec3 origin) {
+	public static @Nullable TargetLocation findMatchingAnyDimension(ServerLevel level, String address,
+		@Nullable Vec3 origin) {
 		return findMatchingAnyDimension(level, address, origin, null, null);
 	}
 
-	public static @Nullable TargetLocation findMatchingAnyDimension(ServerLevel level, String address, @Nullable Vec3 origin,
+	public static @Nullable TargetLocation findMatchingAnyDimension(ServerLevel level, String address,
+		@Nullable Vec3 origin,
 		@Nullable ResourceKey<Level> excludedDimension, @Nullable BlockPos excludedPos) {
 		return findMatchingAnyDimension(level, address, origin, excludedDimension, excludedPos, target -> true);
 	}
 
-	public static @Nullable TargetLocation findMatchingAnyDimension(ServerLevel level, String address, @Nullable Vec3 origin,
-		@Nullable ResourceKey<Level> excludedDimension, @Nullable BlockPos excludedPos, Predicate<TargetLocation> predicate) {
+	public static @Nullable TargetLocation findMatchingAnyDimension(ServerLevel level, String address,
+		@Nullable Vec3 origin,
+		@Nullable ResourceKey<Level> excludedDimension, @Nullable BlockPos excludedPos,
+		Predicate<TargetLocation> predicate) {
 		String normalized = normalize(address);
 		if (PhantomAddressRules.isBlank(normalized)) {
 			return null;
@@ -113,7 +123,8 @@ public final class PhantomPortTargetRegistry {
 			return;
 		}
 		TARGETS.entrySet().removeIf(levelEntry -> {
-			levelEntry.getValue().entrySet().removeIf(entry -> currentTick - entry.getValue().lastSeenTick > ENTRY_TIMEOUT_TICKS);
+			levelEntry.getValue().entrySet()
+				.removeIf(entry -> currentTick - entry.getValue().lastSeenTick > ENTRY_TIMEOUT_TICKS);
 			return levelEntry.getValue().isEmpty();
 		});
 	}
@@ -145,7 +156,9 @@ public final class PhantomPortTargetRegistry {
 			&& dimension.equals(excludedDimension) && pos.equals(excludedPos);
 	}
 
-	private record Entry(String address, int lastSeenTick) {}
+	private record Entry(String address, int lastSeenTick) {
+	}
 
-	public record TargetLocation(ResourceKey<Level> dimension, BlockPos pos, String address) {}
+	public record TargetLocation(ResourceKey<Level> dimension, BlockPos pos, String address) {
+	}
 }

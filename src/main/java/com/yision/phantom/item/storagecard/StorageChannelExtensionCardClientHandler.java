@@ -1,12 +1,16 @@
 package com.yision.phantom.item.storagecard;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBehaviour;
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlockEntity;
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelConnectionHandler;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
-import java.util.List;
-import java.util.UUID;
+
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.createmod.catnip.outliner.Outliner;
 import net.minecraft.client.Minecraft;
@@ -18,8 +22,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.AABB;
+
 import net.neoforged.neoforge.client.event.ClientTickEvent;
-import org.apache.commons.lang3.tuple.Pair;
 
 public class StorageChannelExtensionCardClientHandler {
 	public static void onClientTick(ClientTickEvent.Post event) {
@@ -35,7 +39,8 @@ public class StorageChannelExtensionCardClientHandler {
 			return;
 
 		int color = AnimationTickHolder.getTicks() % 16 < 8 ? 0x708DAD : 0x90ADCD;
-		for (LogisticallyLinkedBehaviour behaviour : LogisticallyLinkedBehaviour.getAllPresent(frequency, false, true)) {
+		for (LogisticallyLinkedBehaviour behaviour : LogisticallyLinkedBehaviour.getAllPresent(frequency, false,
+			true)) {
 			SmartBlockEntity be = behaviour.blockEntity;
 			if (!player.canInteractWithBlock(be.getBlockPos(), 64))
 				continue;
@@ -46,9 +51,9 @@ public class StorageChannelExtensionCardClientHandler {
 
 		BlockPos playerPos = player.blockPosition();
 		for (int x = SectionPos.blockToSectionCoord(playerPos.getX() - 64);
-			x <= SectionPos.blockToSectionCoord(playerPos.getX() + 64); x++) {
+			 x <= SectionPos.blockToSectionCoord(playerPos.getX() + 64); x++) {
 			for (int z = SectionPos.blockToSectionCoord(playerPos.getZ() - 64);
-				z <= SectionPos.blockToSectionCoord(playerPos.getZ() + 64); z++) {
+				 z <= SectionPos.blockToSectionCoord(playerPos.getZ() + 64); z++) {
 				LevelChunk chunk = mc.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false);
 				if (chunk == null)
 					continue;

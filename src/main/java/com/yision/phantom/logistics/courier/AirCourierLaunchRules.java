@@ -5,11 +5,13 @@ import com.simibubi.create.content.kinetics.belt.BeltBlockEntity;
 public final class AirCourierLaunchRules {
 	private static final float MIN_TAKEOFF_SPEED = 16.0f;
 
-	private AirCourierLaunchRules() {}
+	private AirCourierLaunchRules() {
+	}
 
 	public static boolean canLaunchFrom(BeltBlockEntity belt, int insertedAt, boolean beltMovementPositive) {
 		int requiredLength = requiredBeltLength(belt);
-		return requiredLength > 0 && effectiveBeltLength(belt.beltLength, insertedAt, beltMovementPositive) >= requiredLength;
+		return requiredLength > 0 &&
+			effectiveBeltLength(belt.beltLength, insertedAt, beltMovementPositive) >= requiredLength;
 	}
 
 	public static int requiredBeltLength(BeltBlockEntity belt) {

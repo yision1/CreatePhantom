@@ -1,11 +1,12 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
 import com.yision.phantom.compat.curios.CuriosTickerCompat;
-import net.minecraft.network.codec.StreamCodec;
+
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 
 public record TunablePortableTickerLocator(Source source, int slot) {

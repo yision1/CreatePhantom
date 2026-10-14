@@ -1,11 +1,13 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
 import java.util.UUID;
+
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -14,7 +16,8 @@ public final class ClientScreenStorage {
 	private static TunablePortableTickerMenu activeMenu;
 	private static int activeRequestId;
 
-	private ClientScreenStorage() {}
+	private ClientScreenStorage() {
+	}
 
 	public static void request(TunablePortableTickerMenu menu, Runnable nativeRefresh) {
 		if (!isOpen(menu))

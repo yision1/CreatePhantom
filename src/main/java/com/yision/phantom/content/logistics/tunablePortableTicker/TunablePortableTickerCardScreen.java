@@ -1,5 +1,13 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
+
 import com.google.common.collect.ImmutableList;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -8,18 +16,16 @@ import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+
 import net.createmod.catnip.animation.AnimationTickHolder;
-import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.animation.LerpedFloat.Chaser;
+import net.createmod.catnip.animation.LerpedFloat;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Renderable;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -28,10 +34,8 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+
 import net.neoforged.neoforge.items.SlotItemHandler;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen<TunablePortableTickerCardMenu> {
 	private static final int CARD_HEADER = 20;
@@ -94,7 +98,7 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 			.copy();
 		editorEditBox.setValue(editingItem.has(DataComponents.CUSTOM_NAME)
 			? editingItem.getHoverName()
-				.getString()
+			.getString()
 			: "");
 
 		menu.proxyInventory.setStackInSlot(0, editingItem.copy());
@@ -469,8 +473,9 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 
 		renderPlayerInventory(graphics, leftPos + 10, topPos + 88);
 
-		FormattedCharSequence editorTitle = Component.translatable("gui.createphantom.tunable_portable_ticker.card_editor")
-			.getVisualOrderText();
+		FormattedCharSequence editorTitle =
+			Component.translatable("gui.createphantom.tunable_portable_ticker.card_editor")
+				.getVisualOrderText();
 		graphics.drawString(font, editorTitle, center - font.width(editorTitle) / 2, topPos - 1, 0x3D3C48, false);
 	}
 

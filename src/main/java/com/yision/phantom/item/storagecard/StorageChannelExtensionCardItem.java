@@ -1,5 +1,14 @@
 package com.yision.phantom.item.storagecard;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import com.simibubi.create.content.equipment.clipboard.ClipboardBlockEntity;
 import com.simibubi.create.content.equipment.clipboard.ClipboardEntry;
 import com.simibubi.create.content.logistics.filter.FilterItem;
@@ -8,11 +17,7 @@ import com.simibubi.create.content.logistics.stockTicker.StockTickerBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.utility.CreateLang;
 import com.yision.phantom.registry.AllDataComponents;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+
 import net.createmod.catnip.lang.FontHelper;
 import net.createmod.catnip.nbt.NBTHelper;
 import net.minecraft.ChatFormatting;
@@ -21,16 +26,14 @@ import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class StorageChannelExtensionCardItem extends Item {
 	public StorageChannelExtensionCardItem(Properties properties) {
@@ -48,7 +51,8 @@ public class StorageChannelExtensionCardItem extends Item {
 
 	@Nullable
 	public static UUID networkFromStack(ItemStack stack) {
-		CompoundTag tag = stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY).copyTag();
+		CompoundTag tag =
+			stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY).copyTag();
 		if (!tag.hasUUID("Freq"))
 			return null;
 		return tag.getUUID("Freq");
@@ -66,7 +70,8 @@ public class StorageChannelExtensionCardItem extends Item {
 				addresses.size()).withStyle(FontHelper.Palette.STANDARD_CREATE.highlight()));
 		}
 
-		CompoundTag tag = stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY).copyTag();
+		CompoundTag tag =
+			stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY).copyTag();
 		if (!tag.hasUUID("Freq"))
 			return;
 
@@ -118,7 +123,8 @@ public class StorageChannelExtensionCardItem extends Item {
 	}
 
 	public static void assignFrequency(ItemStack stack, Player player, UUID frequency) {
-		CompoundTag tag = stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY).copyTag();
+		CompoundTag tag =
+			stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY).copyTag();
 		tag.putUUID("Freq", frequency);
 		player.displayClientMessage(CreateLang.translateDirect("logistically_linked.tuned"), true);
 		stack.set(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.of(tag));
@@ -147,7 +153,8 @@ public class StorageChannelExtensionCardItem extends Item {
 
 	public static List<ItemStack> loadCategoriesFromStack(ItemStack stack) {
 		List<ItemStack> readCategories =
-			new java.util.ArrayList<>(stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_CATEGORIES, List.of()));
+			new java.util.ArrayList<>(
+				stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_CATEGORIES, List.of()));
 		readCategories.removeIf(itemStack -> !itemStack.isEmpty() && !(itemStack.getItem() instanceof FilterItem));
 		return readCategories;
 	}

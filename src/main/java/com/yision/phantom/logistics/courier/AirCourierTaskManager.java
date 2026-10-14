@@ -21,7 +21,8 @@ public final class AirCourierTaskManager {
 	private static @Nullable AirCourierTaskSavedData savedData;
 	private static final Map<UUID, AirCourierEntity> visualEntities = new HashMap<>();
 
-	private AirCourierTaskManager() {}
+	private AirCourierTaskManager() {
+	}
 
 	public static void onServerStarting(MinecraftServer server) {
 		clearRuntimeState();
@@ -81,7 +82,8 @@ public final class AirCourierTaskManager {
 	}
 
 	public static void onPlayerLoggedOut(ServerPlayer player) {
-		if (savedData == null) return;
+		if (savedData == null)
+			return;
 		for (AirCourierTask task : savedData.getTasks()) {
 			if (task.isActive() && task.targetPhantomPortPos() == null
 				&& player.getUUID().equals(task.targetPlayerId())) {

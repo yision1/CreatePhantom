@@ -1,17 +1,19 @@
 package com.yision.phantom.logistics.courier;
 
-import com.simibubi.create.content.kinetics.belt.BeltBlockEntity;
-import com.simibubi.create.content.kinetics.belt.transport.TransportedItemStack;
-import com.simibubi.create.content.logistics.box.PackageItem;
-import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
-import com.yision.phantom.logistics.address.PhantomAddressRules;
-import com.yision.phantom.item.miniphantom.MiniPhantomItem;
-import com.yision.phantom.logistics.courier.flight.AirCourierFlightMath;
-import com.yision.phantom.registry.AllItems;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import com.simibubi.create.content.kinetics.belt.BeltBlockEntity;
+import com.simibubi.create.content.kinetics.belt.transport.TransportedItemStack;
+import com.simibubi.create.content.logistics.box.PackageItem;
+import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
+import com.yision.phantom.item.miniphantom.MiniPhantomItem;
+import com.yision.phantom.logistics.address.PhantomAddressRules;
+import com.yision.phantom.logistics.courier.flight.AirCourierFlightMath;
+import com.yision.phantom.registry.AllItems;
+
 import net.createmod.catnip.math.AngleHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -20,11 +22,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 public final class AirCourierHelper {
-	private AirCourierHelper() {}
+	private AirCourierHelper() {
+	}
 
 	public static ServerPlayer findTargetPlayer(ServerLevel level, ItemStack box) {
 		return findTargetPlayer(level, box, true);
@@ -72,8 +74,8 @@ public final class AirCourierHelper {
 	public static boolean isCourierLaunchStack(ItemStack stack) {
 		return stack.is(AllItems.MINI_PHANTOM.get())
 			&& (MiniPhantomItem.hasCargo(stack)
-				|| MiniPhantomItem.getReturnTarget(stack).isPresent()
-				|| MiniPhantomItem.getPlayerReturnTarget(stack).isPresent());
+			|| MiniPhantomItem.getReturnTarget(stack).isPresent()
+			|| MiniPhantomItem.getPlayerReturnTarget(stack).isPresent());
 	}
 
 	public static int getHeadingAngle(Direction movementDirection) {
@@ -170,7 +172,7 @@ public final class AirCourierHelper {
 			candidates.add(trimmed.substring(ltIndex + 1, gtIndex).trim());
 		}
 
-		for (String separator : new String[] { ",", ";", "|" }) {
+		for (String separator : new String[]{",", ";", "|"}) {
 			if (trimmed.contains(separator)) {
 				for (String part : trimmed.split(java.util.regex.Pattern.quote(separator))) {
 					String partTrimmed = part.trim();

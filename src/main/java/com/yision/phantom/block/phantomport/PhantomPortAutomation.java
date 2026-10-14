@@ -1,14 +1,17 @@
 package com.yision.phantom.block.phantomport;
 
+import org.jetbrains.annotations.Nullable;
+
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
 import com.yision.phantom.logistics.address.PhantomAddressRules;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
+
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
-import org.jetbrains.annotations.Nullable;
 
 final class PhantomPortAutomation {
 
@@ -17,8 +20,8 @@ final class PhantomPortAutomation {
 	private final PhantomPortBeltAccess beltAccess;
 
 	PhantomPortAutomation(PhantomPortBlockEntity port,
-						  PhantomPortInventory inventory,
-						  PhantomPortBeltAccess beltAccess) {
+		PhantomPortInventory inventory,
+		PhantomPortBeltAccess beltAccess) {
 		this.port = port;
 		this.inventory = inventory;
 		this.beltAccess = beltAccess;
@@ -69,7 +72,7 @@ final class PhantomPortAutomation {
 	}
 
 	private boolean tryInsertPackageIntoAdjacent(int packageSlot, ItemStack singlePackage,
-												 IItemHandler adjacentInventory) {
+		IItemHandler adjacentInventory) {
 		for (int slot = 0; slot < adjacentInventory.getSlots(); slot++) {
 			ItemStack remainder = adjacentInventory.insertItem(slot, singlePackage.copy(), true);
 			if (!remainder.isEmpty()) {

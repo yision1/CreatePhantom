@@ -1,5 +1,9 @@
 package com.yision.phantom.item.miniphantom;
 
+import java.util.List;
+
+import org.jetbrains.annotations.NotNull;
+
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.trains.station.NoShadowFontWrapper;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
@@ -11,17 +15,16 @@ import com.yision.phantom.CreatePhantom;
 import com.yision.phantom.client.gui.address.AddressSuggestionEditBox;
 import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
 import com.yision.phantom.network.phantom.MiniPhantomConfirmPacket;
-import java.util.List;
+
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.createmod.catnip.platform.CatnipServices;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.ChatFormatting;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.NotNull;
 
 public class MiniPhantomScreen extends AbstractSimiContainerScreen<MiniPhantomMenu> {
 	private static final ResourceLocation MINI_PHANTOM_GUI =
@@ -61,7 +64,8 @@ public class MiniPhantomScreen extends AbstractSimiContainerScreen<MiniPhantomMe
 		addRenderableWidget(addressBox);
 
 		confirmButton = new IconButton(x + GUI_WIDTH - 30, y + GUI_HEIGHT - 25, AllIcons.I_CONFIRM);
-		confirmButton.withCallback(() -> CatnipServices.NETWORK.sendToServer(new MiniPhantomConfirmPacket(addressBox.getValue())));
+		confirmButton.withCallback(
+			() -> CatnipServices.NETWORK.sendToServer(new MiniPhantomConfirmPacket(addressBox.getValue())));
 		addRenderableWidget(confirmButton);
 
 		lastClipboardStack = menu.getClipboardStack().copy();

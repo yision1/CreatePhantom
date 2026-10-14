@@ -1,18 +1,21 @@
 package com.yision.phantom.logistics.courier;
 
+import java.util.UUID;
+
 import com.simibubi.create.content.kinetics.belt.BeltBlockEntity;
 import com.simibubi.create.content.kinetics.belt.BeltHelper;
 import com.simibubi.create.content.kinetics.belt.transport.TransportedItemStack;
 import com.yision.phantom.compat.sable.SableCompat;
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
-import java.util.UUID;
+
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
 public final class AirCourierBeltHooks {
-	private AirCourierBeltHooks() {}
+	private AirCourierBeltHooks() {
+	}
 
 	public static void alignCourierLaunchStack(BeltBlockEntity belt, TransportedItemStack stack) {
 		if (!AirCourierHelper.isCourierLaunchStack(stack.stack)) {
@@ -75,8 +78,8 @@ public final class AirCourierBeltHooks {
 				ServerPlayer targetPlayer = serverLevel.getServer().getPlayerList().getPlayer(player.playerId());
 				yield targetPlayer != null
 					? AirCourierTask.forPackageToPlayer(taskId, box, serverLevel, player.playerId(),
-						player.dimension(), launch.spawnPos(), launch.direction(), launch.motion(),
-						sourcePhantomPortDimension, sourcePhantomPortPos, null, hudEntryId, null)
+					player.dimension(), launch.spawnPos(), launch.direction(), launch.motion(),
+					sourcePhantomPortDimension, sourcePhantomPortPos, null, hudEntryId, null)
 					: null;
 			}
 		};
@@ -143,5 +146,6 @@ public final class AirCourierBeltHooks {
 			SableCompat.projectVector(level, localSpawnPos, localMotion));
 	}
 
-	private record LaunchGeometry(Vec3 spawnPos, Vec3 direction, Vec3 motion) {}
+	private record LaunchGeometry(Vec3 spawnPos, Vec3 direction, Vec3 motion) {
+	}
 }

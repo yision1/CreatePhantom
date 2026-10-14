@@ -66,9 +66,3 @@ The Tunable Portable Stock Ticker can display and request fluid.
 ## Others
 
 If you want to help translate this mod, make a pull request with the translation files.
-
-## License
-Create Phantom is licensed under the BSD-3-Clause. See [LICENSE](LICENSE.txt) for more information.
-
-Certain sections of the code are from the Create-Mobile-Packages mod, which is licensed under the MIT license. See [Create-Mobile-Packages's license](https://github.com/timplay33/Create-Mobile-Packages/blob/mc1.21.1/main/LICENSE) for more information.
-

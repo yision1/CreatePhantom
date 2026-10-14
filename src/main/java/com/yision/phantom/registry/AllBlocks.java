@@ -1,15 +1,18 @@
 package com.yision.phantom.registry;
 
+import static com.simibubi.create.foundation.data.TagGen.pickaxeOnly;
+import static com.yision.phantom.CreatePhantom.REGISTRATE;
+
 import com.simibubi.create.foundation.data.SharedProperties;
 import com.tterrag.registrate.providers.ProviderType;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
 import com.yision.phantom.block.phantomport.PhantomPortBlock;
+
 import net.minecraft.core.Direction;
+
 import net.neoforged.neoforge.client.model.generators.ConfiguredModel;
 import net.neoforged.neoforge.client.model.generators.ModelFile;
-import static com.simibubi.create.foundation.data.TagGen.pickaxeOnly;
-import static com.yision.phantom.CreatePhantom.REGISTRATE;
 
 public final class AllBlocks {
 	public static final BlockEntry<PhantomPortBlock> PHANTOMPORT =
@@ -39,7 +42,9 @@ public final class AllBlocks {
 			.build()
 			.register();
 
-	private AllBlocks() {}
+	private AllBlocks() {
+	}
 
-	public static void register() {}
+	public static void register() {
+	}
 }

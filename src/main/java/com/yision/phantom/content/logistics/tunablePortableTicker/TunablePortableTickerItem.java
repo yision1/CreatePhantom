@@ -1,28 +1,31 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
-import com.simibubi.create.Create;
-import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
-import com.yision.phantom.registry.AllDataComponents;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.UUID;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import com.simibubi.create.Create;
+import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
+import com.yision.phantom.registry.AllDataComponents;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.item.component.ItemContainerContents;
-import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.SimpleMenuProvider;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class TunablePortableTickerItem extends Item {
 	public static final int MAX_CHANNELS = 6;
@@ -101,7 +104,8 @@ public class TunablePortableTickerItem extends Item {
 	public static void saveAddress(ItemStack ticker, UUID network, String address) {
 		if (network == null)
 			return;
-		Map<UUID, String> existing = ticker.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_ADDRESSES, Map.of());
+		Map<UUID, String> existing = ticker.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_ADDRESSES,
+			Map.of());
 		Map<UUID, String> addresses = new HashMap<>(existing);
 		if (address == null || address.isBlank())
 			addresses.remove(network);
@@ -113,7 +117,8 @@ public class TunablePortableTickerItem extends Item {
 	public static String loadAddress(ItemStack ticker, UUID network) {
 		if (network == null)
 			return "";
-		Map<UUID, String> addresses = ticker.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_ADDRESSES, Map.of());
+		Map<UUID, String> addresses =
+			ticker.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_ADDRESSES, Map.of());
 		return addresses.getOrDefault(network, "");
 	}
 
@@ -177,8 +182,8 @@ public class TunablePortableTickerItem extends Item {
 		if (cardConfig) {
 			ItemStack openedSnapshot = stack.copy();
 			player.openMenu(new SimpleMenuProvider(
-				(id, inv, p) -> TunablePortableTickerCardMenu.create(id, inv, stack, locator),
-				Component.translatable("gui.createphantom.tunable_portable_ticker.cards")),
+					(id, inv, p) -> TunablePortableTickerCardMenu.create(id, inv, stack, locator),
+					Component.translatable("gui.createphantom.tunable_portable_ticker.cards")),
 				buffer -> {
 					ItemStack.STREAM_CODEC.encode(buffer, openedSnapshot);
 					TunablePortableTickerLocator.STREAM_CODEC.encode(buffer, locator);
@@ -212,8 +217,9 @@ public class TunablePortableTickerItem extends Item {
 		UUID finalNetwork = network;
 		var queryPosition = PortableTickerStockData.queryPositionFor(player);
 		player.openMenu(new SimpleMenuProvider(
-			(id, inv, p) -> new TunablePortableTickerMenu(id, inv, locator, finalChannel, finalNetwork, queryPosition),
-			Component.translatable("item.createphantom.tunable_portable_ticker")),
+				(id, inv, p) -> new TunablePortableTickerMenu(id, inv, locator, finalChannel, finalNetwork,
+					queryPosition),
+				Component.translatable("item.createphantom.tunable_portable_ticker")),
 			buffer -> TunablePortableTickerMenu.writeMenuData(buffer, locator, finalChannel, player, queryPosition));
 	}
 }

@@ -55,9 +55,11 @@ public final class AirCourierHudOverlay {
 		Component addressText,
 		int statusWidth,
 		int addressWidth
-	) {}
+	) {
+	}
 
-	private AirCourierHudOverlay() {}
+	private AirCourierHudOverlay() {
+	}
 
 	public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
 		displayedPayload = AirCourierHudPayload.hidden();
@@ -175,7 +177,7 @@ public final class AirCourierHudOverlay {
 			RenderedEntry old = previous.get(entry.id());
 			List<BigItemStack> displayEntries = old != null && entry.hasSameContents(old.entry())
 				? old.displayEntries() : entry.displayStacks().stream()
-					.map(FluidLogisticsPackageCompat::getDisplayEntry).toList();
+				.map(FluidLogisticsPackageCompat::getDisplayEntry).toList();
 			Component statusText = entry.status().asComponent();
 			Component addressText = Component.translatable("gui.createphantom.phantomport.arrival_time_display",
 				formatEta(entry.etaSeconds()));

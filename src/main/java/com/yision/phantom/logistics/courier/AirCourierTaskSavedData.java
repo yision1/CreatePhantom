@@ -1,16 +1,18 @@
 package com.yision.phantom.logistics.courier;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jetbrains.annotations.NotNull;
+
 import com.yision.phantom.CreatePhantom;
+
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class AirCourierTaskSavedData extends SavedData {
 
@@ -18,7 +20,8 @@ public class AirCourierTaskSavedData extends SavedData {
 
 	private final List<AirCourierTask> tasks = new ArrayList<>();
 
-	public AirCourierTaskSavedData() {}
+	public AirCourierTaskSavedData() {
+	}
 
 	public static AirCourierTaskSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
 		AirCourierTaskSavedData data = new AirCourierTaskSavedData();

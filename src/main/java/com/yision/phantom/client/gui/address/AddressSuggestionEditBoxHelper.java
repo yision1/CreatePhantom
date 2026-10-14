@@ -1,12 +1,14 @@
 package com.yision.phantom.client.gui.address;
 
-import com.simibubi.create.AllBlocks;
-import com.simibubi.create.content.trains.schedule.DestinationSuggestions;
-import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import com.simibubi.create.AllBlocks;
+import com.simibubi.create.content.trains.schedule.DestinationSuggestions;
+import com.yision.phantom.item.storagecard.StorageChannelExtensionCardItem;
+
 import net.createmod.catnip.data.IntAttached;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
@@ -61,13 +63,15 @@ public class AddressSuggestionEditBoxHelper {
 		return suggestions;
 	}
 
-	private static void appendClipboardAddresses(List<IntAttached<String>> options, Set<String> alreadyAdded, ItemStack item) {
+	private static void appendClipboardAddresses(List<IntAttached<String>> options, Set<String> alreadyAdded,
+		ItemStack item) {
 		if (item == null || !AllBlocks.CLIPBOARD.isIn(item))
 			return;
 		appendClipboardAddressesFromComponents(options, alreadyAdded, item.getComponents());
 	}
 
-	private static void appendClipboardAddressesFromComponents(List<IntAttached<String>> options, Set<String> alreadyAdded,
+	private static void appendClipboardAddressesFromComponents(List<IntAttached<String>> options,
+		Set<String> alreadyAdded,
 		DataComponentMap components) {
 		for (String address : StorageChannelExtensionCardItem.extractAddresses(components)) {
 			if (!alreadyAdded.add(address))

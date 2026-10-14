@@ -1,9 +1,11 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
+import java.util.UUID;
+
 import com.simibubi.create.Create;
 import com.simibubi.create.content.logistics.packagerLink.LogisticsNetwork;
 import com.yision.phantom.network.AllPackets;
-import java.util.UUID;
+
 import net.createmod.catnip.net.base.ServerboundPacketPayload;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -12,7 +14,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
 
 public record TunablePortableTickerLockPacket(TunablePortableTickerLocator locator, int channel,
-	UUID sessionNetwork, boolean locked) implements ServerboundPacketPayload {
+											  UUID sessionNetwork, boolean locked) implements ServerboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerLockPacket> STREAM_CODEC =
 		StreamCodec.composite(
 			TunablePortableTickerLocator.STREAM_CODEC, TunablePortableTickerLockPacket::locator,
@@ -23,7 +25,8 @@ public record TunablePortableTickerLockPacket(TunablePortableTickerLocator locat
 
 	@Override
 	public void handle(ServerPlayer player) {
-		TunablePortableTickerMenu menu = TunablePortableTickerSession.resolve(player, locator, channel, sessionNetwork);
+		TunablePortableTickerMenu menu = TunablePortableTickerSession.resolve(player, locator, channel,
+			sessionNetwork);
 		if (menu == null
 			|| !Create.LOGISTICS.isLockable(sessionNetwork)
 			|| !Create.LOGISTICS.mayAdministrate(sessionNetwork, player))

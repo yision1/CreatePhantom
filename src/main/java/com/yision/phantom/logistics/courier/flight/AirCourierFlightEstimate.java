@@ -5,7 +5,8 @@ import net.minecraft.world.phys.Vec3;
 
 public final class AirCourierFlightEstimate {
 
-	private AirCourierFlightEstimate() {}
+	private AirCourierFlightEstimate() {
+	}
 
 	public static int cruiseAndLandingTicks(AirCourierFlightProfile profile,
 		Vec3 from, Vec3 cruiseTarget, Vec3 landingTarget, double completionDistance) {
@@ -13,7 +14,7 @@ public final class AirCourierFlightEstimate {
 		Vec3 approachGate = AirCourierFlightTargets.approachGate(profile, from, initialMotion, landingTarget, false);
 		boolean alreadyLanding = from.distanceTo(approachGate) < profile.approachGateNearDistance()
 			|| (AirCourierFlightMath.horizontalDistance(from, landingTarget) < profile.approachGateHorizontalThreshold()
-				&& from.y > landingTarget.y);
+			&& from.y > landingTarget.y);
 		if (alreadyLanding) {
 			return landingTicks(profile, from, landingTarget, completionDistance);
 		}
@@ -43,7 +44,8 @@ public final class AirCourierFlightEstimate {
 		Vec3 toTarget = landingTarget.subtract(from);
 		double distance = toTarget.length();
 		double remainingDistance = Math.max(0, distance - completionDistance);
-		if (remainingDistance == 0) return 0;
+		if (remainingDistance == 0)
+			return 0;
 		Vec3 direction = toTarget.normalize();
 		double segmentDistance = remainingDistance / 16.0;
 		double ticks = 0;

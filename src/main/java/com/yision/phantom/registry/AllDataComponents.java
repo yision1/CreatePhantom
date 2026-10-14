@@ -1,22 +1,25 @@
 package com.yision.phantom.registry;
 
-import com.mojang.serialization.Codec;
-import com.yision.phantom.item.miniphantom.MiniPhantomCargo;
-import com.yision.phantom.item.miniphantom.MiniPhantomReturnTarget;
-import com.yision.phantom.CreatePhantom;
-import java.util.function.Supplier;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
+
+import com.mojang.serialization.Codec;
+import com.yision.phantom.CreatePhantom;
+import com.yision.phantom.item.miniphantom.MiniPhantomCargo;
+import com.yision.phantom.item.miniphantom.MiniPhantomReturnTarget;
+
 import net.createmod.catnip.codecs.stream.CatnipStreamCodecBuilders;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.ItemContainerContents;
-import net.minecraft.world.item.ItemStack;
+
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -77,9 +80,11 @@ public final class AllDataComponents {
 	public static final Supplier<DataComponentType<Map<UUID, String>>> TUNABLE_PORTABLE_TICKER_ADDRESSES =
 		REGISTER.registerComponentType("tunable_portable_ticker_addresses",
 			builder -> builder.persistent(Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.STRING))
-				.networkSynchronized(ByteBufCodecs.map(java.util.HashMap::new, UUIDUtil.STREAM_CODEC, ByteBufCodecs.STRING_UTF8)));
+				.networkSynchronized(
+					ByteBufCodecs.map(java.util.HashMap::new, UUIDUtil.STREAM_CODEC, ByteBufCodecs.STRING_UTF8)));
 
-	public static final Supplier<DataComponentType<Map<UUID, Map<UUID, List<Integer>>>>> TUNABLE_PORTABLE_TICKER_HIDDEN_CATEGORIES =
+	public static final Supplier<DataComponentType<Map<UUID, Map<UUID, List<Integer>>>>>
+		TUNABLE_PORTABLE_TICKER_HIDDEN_CATEGORIES =
 		REGISTER.registerComponentType("tunable_portable_ticker_hidden_categories",
 			builder -> builder.persistent(Codec.unboundedMap(UUIDUtil.STRING_CODEC,
 					Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.INT.listOf())))
@@ -87,7 +92,8 @@ public final class AllDataComponents {
 					ByteBufCodecs.map(HashMap::new, UUIDUtil.STREAM_CODEC,
 						CatnipStreamCodecBuilders.list(ByteBufCodecs.INT)))));
 
-	private AllDataComponents() {}
+	private AllDataComponents() {
+	}
 
 	public static void register(IEventBus modEventBus) {
 		REGISTER.register(modEventBus);

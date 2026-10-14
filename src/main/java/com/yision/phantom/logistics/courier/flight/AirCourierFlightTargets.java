@@ -1,17 +1,20 @@
 package com.yision.phantom.logistics.courier.flight;
 
+import org.jetbrains.annotations.Nullable;
+
 import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
 import com.yision.phantom.compat.sable.SableCompat;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.Nullable;
 
 public final class AirCourierFlightTargets {
 
-	private AirCourierFlightTargets() {}
+	private AirCourierFlightTargets() {
+	}
 
 	public static Vec3 cruiseTarget(AirCourierFlightProfile profile,
 		@Nullable PhantomPortBlockEntity phantomPort, @Nullable ServerPlayer player) {
@@ -19,7 +22,8 @@ public final class AirCourierFlightTargets {
 			return cruiseTarget(profile, phantomPort.getLevel(), phantomPort.getBlockPos());
 		}
 		if (player != null) {
-			return playerDeliveryTarget(profile, player).add(0, profile.playerCruiseHeight() - profile.playerTargetHeight(), 0);
+			return playerDeliveryTarget(profile, player).add(0,
+				profile.playerCruiseHeight() - profile.playerTargetHeight(), 0);
 		}
 		return Vec3.ZERO;
 	}

@@ -1,9 +1,11 @@
 package com.yision.phantom.registry;
 
 import com.yision.phantom.CreatePhantom;
+
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
+
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -18,7 +20,8 @@ public final class AllCreativeModeTabs {
 			.icon(AllItems.MINI_PHANTOM::asStack)
 			.build());
 
-	private AllCreativeModeTabs() {}
+	private AllCreativeModeTabs() {
+	}
 
 	public static void register(IEventBus modEventBus) {
 		REGISTER.register(modEventBus);

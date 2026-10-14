@@ -31,7 +31,8 @@ public final class AirCourierHudSync {
 
 	private static final Map<UUID, PlayerHudState> HUD_STATES = new HashMap<>();
 
-	private AirCourierHudSync() {}
+	private AirCourierHudSync() {
+	}
 
 	public static void onCourierPreparing(ServerPlayer player, ItemStack box, UUID hudEntryId) {
 		int currentTick = player.server.getTickCount();

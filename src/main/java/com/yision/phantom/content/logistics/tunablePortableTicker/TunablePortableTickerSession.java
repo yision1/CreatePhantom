@@ -1,17 +1,20 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
-import com.simibubi.create.foundation.utility.AdventureUtil;
-import com.simibubi.create.foundation.networking.BlockEntityConfigurationPacket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.world.item.ItemStack;
+
 import org.jetbrains.annotations.Nullable;
+
+import com.simibubi.create.foundation.networking.BlockEntityConfigurationPacket;
+import com.simibubi.create.foundation.utility.AdventureUtil;
+
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 
 public final class TunablePortableTickerSession {
 	private static final int MAX_ADDRESS_LENGTH = 64;
@@ -20,7 +23,8 @@ public final class TunablePortableTickerSession {
 
 	private static final Map<RequestKey, RequestStamp> LAST_STOCK_REQUEST = new HashMap<>();
 
-	private TunablePortableTickerSession() {}
+	private TunablePortableTickerSession() {
+	}
 
 	public static @Nullable TunablePortableTickerMenu resolve(
 		ServerPlayer player, TunablePortableTickerLocator locator, int channel, UUID sessionNetwork
@@ -49,7 +53,8 @@ public final class TunablePortableTickerSession {
 		if (requestId > 0 && !allowStockRequest(player, menu, requestId))
 			return;
 		ItemStack stack = menu.locator.resolve(player);
-		PortableTickerStockData data = PortableTickerStockData.forRequest(player, stack, menu.channel, menu.sessionNetwork, position);
+		PortableTickerStockData data =
+			PortableTickerStockData.forRequest(player, stack, menu.channel, menu.sessionNetwork, position);
 		try (var ignored = PortableTickerPacketContext.handling(menu, player, requestId, data, position)) {
 			nativePacket.handle(player);
 		}
@@ -104,6 +109,9 @@ public final class TunablePortableTickerSession {
 		LAST_STOCK_REQUEST.clear();
 	}
 
-	private record RequestKey(UUID playerId, int containerId, int channel, UUID network) {}
-	private record RequestStamp(long gameTime, int requestId) {}
+	private record RequestKey(UUID playerId, int containerId, int channel, UUID network) {
+	}
+
+	private record RequestStamp(long gameTime, int requestId) {
+	}
 }

@@ -5,7 +5,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 final class SableLoadedCompat {
-	private SableLoadedCompat() {}
+	private SableLoadedCompat() {
+	}
 
 	static Vec3 projectOutOfSubLevel(Level level, Vec3 position) {
 		return Sable.HELPER.projectOutOfSubLevel(level, position);

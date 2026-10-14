@@ -1,10 +1,11 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
 import com.yision.phantom.network.AllPackets;
+
 import net.createmod.catnip.net.base.ServerboundPacketPayload;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 
 public record TunablePortableTickerCardEditPacket(int fromIndex, int toIndex)

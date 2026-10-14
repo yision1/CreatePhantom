@@ -1,20 +1,24 @@
 package com.yision.phantom.mixin;
 
-import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestMenu;
-import com.yision.phantom.content.logistics.tunablePortableTicker.StockKeeperRequestMenuAccess;
-import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerMenu;
 import java.util.List;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.item.ItemStack;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestMenu;
+import com.yision.phantom.content.logistics.tunablePortableTicker.StockKeeperRequestMenuAccess;
+import com.yision.phantom.content.logistics.tunablePortableTicker.TunablePortableTickerMenu;
+
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.ItemStack;
+
 @Mixin(StockKeeperRequestMenu.class)
-public abstract class StockKeeperRequestMenuMixin extends AbstractContainerMenu implements StockKeeperRequestMenuAccess {
+public abstract class StockKeeperRequestMenuMixin extends AbstractContainerMenu implements
+	StockKeeperRequestMenuAccess {
 	@Shadow(remap = false)
 	boolean isAdmin;
 	@Shadow(remap = false)

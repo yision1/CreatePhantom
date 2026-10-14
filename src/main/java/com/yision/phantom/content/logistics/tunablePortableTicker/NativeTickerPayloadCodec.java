@@ -1,18 +1,21 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
-import io.netty.handler.codec.DecoderException;
 import com.yision.phantom.network.AllPackets;
+
+import io.netty.handler.codec.DecoderException;
 import net.minecraft.network.ConnectionProtocol;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+
 import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 public final class NativeTickerPayloadCodec {
 
-	private NativeTickerPayloadCodec() {}
+	private NativeTickerPayloadCodec() {
+	}
 
 	public static StreamCodec<RegistryFriendlyByteBuf, CustomPacketPayload> forFlow(PacketFlow flow) {
 		return new StreamCodec<>() {

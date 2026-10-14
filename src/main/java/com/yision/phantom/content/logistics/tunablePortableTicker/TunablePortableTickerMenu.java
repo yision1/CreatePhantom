@@ -1,17 +1,19 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
+import java.util.List;
+import java.util.UUID;
+
 import com.simibubi.create.Create;
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestMenu;
 import com.yision.phantom.registry.AllMenuTypes;
-import java.util.List;
-import java.util.UUID;
+
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.server.level.ServerPlayer;
 
 public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 	public final TunablePortableTickerLocator locator;
@@ -33,7 +35,8 @@ public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 
 	public TunablePortableTickerMenu(int id, Inventory inventory, TunablePortableTickerLocator locator,
 		int channel, UUID sessionNetwork) {
-		this(id, inventory, locator, channel, sessionNetwork, PortableTickerStockData.queryPositionFor(inventory.player));
+		this(id, inventory, locator, channel, sessionNetwork,
+			PortableTickerStockData.queryPositionFor(inventory.player));
 	}
 
 	public TunablePortableTickerMenu(int id, Inventory inventory, TunablePortableTickerLocator locator,
@@ -134,15 +137,17 @@ public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 
 	private static MenuData readMenuData(RegistryFriendlyByteBuf buffer) {
 		return new MenuData(TunablePortableTickerLocator.STREAM_CODEC.decode(buffer), ByteBufCodecs.INT.decode(buffer),
-			BlockPos.STREAM_CODEC.decode(buffer), ItemStack.STREAM_CODEC.decode(buffer), buffer.readBoolean(), buffer.readBoolean());
+			BlockPos.STREAM_CODEC.decode(buffer), ItemStack.STREAM_CODEC.decode(buffer), buffer.readBoolean(),
+			buffer.readBoolean());
 	}
 
 	private record MenuData(TunablePortableTickerLocator locator, int channel, BlockPos queryPosition,
-		ItemStack stack, boolean admin, boolean locked) {}
+							ItemStack stack, boolean admin, boolean locked) {
+	}
 
 	private void refreshNetworkState(Player player) {
 		setNetworkState(sessionNetwork != null && Create.LOGISTICS.isLockable(sessionNetwork)
-			&& Create.LOGISTICS.mayAdministrate(sessionNetwork, player),
+				&& Create.LOGISTICS.mayAdministrate(sessionNetwork, player),
 			sessionNetwork != null && Create.LOGISTICS.isLocked(sessionNetwork));
 	}
 

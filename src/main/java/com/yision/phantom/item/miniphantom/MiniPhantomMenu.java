@@ -1,24 +1,27 @@
 package com.yision.phantom.item.miniphantom;
 
+import org.jetbrains.annotations.NotNull;
+
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.yision.phantom.registry.AllAttachmentTypes;
 import com.yision.phantom.registry.AllItems;
 import com.yision.phantom.registry.AllMenuTypes;
+
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.items.SlotItemHandler;
-import org.jetbrains.annotations.NotNull;
 
 public class MiniPhantomMenu extends AbstractContainerMenu {
 	private static final int PACKAGE_SLOT_COUNT = 9;
@@ -63,7 +66,8 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 		addSlots();
 	}
 
-	public MiniPhantomMenu(MenuType<?> type, int id, Inventory playerInventory, ItemStack openedStack, InteractionHand hand) {
+	public MiniPhantomMenu(MenuType<?> type, int id, Inventory playerInventory, ItemStack openedStack,
+		InteractionHand hand) {
 		super(type, id);
 		this.player = playerInventory.player;
 		this.playerInventory = playerInventory;
@@ -90,7 +94,8 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 		addSlots();
 	}
 
-	public static MiniPhantomMenu create(int id, Inventory playerInventory, ItemStack openedStack, InteractionHand hand) {
+	public static MiniPhantomMenu create(int id, Inventory playerInventory, ItemStack openedStack,
+		InteractionHand hand) {
 		return new MiniPhantomMenu(AllMenuTypes.MINI_PHANTOM.get(), id, playerInventory, openedStack, hand);
 	}
 
@@ -345,7 +350,8 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 	}
 
 	@OnlyIn(Dist.CLIENT)
-	public static MiniPhantomMenu createOnClient(int id, Inventory playerInventory, RegistryFriendlyByteBuf extraData) {
+	public static MiniPhantomMenu createOnClient(int id, Inventory playerInventory,
+		RegistryFriendlyByteBuf extraData) {
 		return new MiniPhantomMenu(AllMenuTypes.MINI_PHANTOM.get(), id, playerInventory, extraData);
 	}
 }

@@ -1,12 +1,16 @@
 package com.yision.phantom.logistics.courier;
 
+import java.util.UUID;
+
+import org.jetbrains.annotations.Nullable;
+
 import com.simibubi.create.content.logistics.box.PackageEntity;
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
 import com.yision.phantom.entity.courier.AirCourierEntity;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
 import com.yision.phantom.registry.AllItems;
-import java.util.UUID;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceKey;
@@ -19,13 +23,13 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.Nullable;
 
 public final class AirCourierDeliveryService {
 
-	private AirCourierDeliveryService() {}
+	private AirCourierDeliveryService() {
+	}
 
-	public enum TargetState { AVAILABLE, PLAYER_OFFLINE, UNAVAILABLE }
+	public enum TargetState {AVAILABLE, PLAYER_OFFLINE, UNAVAILABLE}
 
 	public static TargetState targetState(MinecraftServer server, AirCourierEntity.Mission mission,
 		@Nullable ResourceKey<Level> dimension, @Nullable BlockPos portPos,
@@ -37,9 +41,11 @@ public final class AirCourierDeliveryService {
 				? port.canReceiveCarrier() : port.canReceiveCourier(box))
 				? TargetState.AVAILABLE : TargetState.UNAVAILABLE;
 		}
-		if (playerId == null) return TargetState.UNAVAILABLE;
+		if (playerId == null)
+			return TargetState.UNAVAILABLE;
 		ServerPlayer player = server.getPlayerList().getPlayer(playerId);
-		if (player == null) return TargetState.PLAYER_OFFLINE;
+		if (player == null)
+			return TargetState.PLAYER_OFFLINE;
 		return player.isAlive() ? TargetState.AVAILABLE : TargetState.UNAVAILABLE;
 	}
 
@@ -132,7 +138,8 @@ public final class AirCourierDeliveryService {
 
 	public static boolean dropCarrier(ServerLevel level, Vec3 position) {
 		if (!level.addFreshEntity(new ItemEntity(level, position.x, position.y, position.z,
-			AllItems.MINI_PHANTOM.asStack()))) return false;
+			AllItems.MINI_PHANTOM.asStack())))
+			return false;
 		level.playSound(null, BlockPos.containing(position),
 			SoundEvents.ITEM_FRAME_BREAK, SoundSource.NEUTRAL, 0.7f, 0.9f);
 		return true;
@@ -164,14 +171,16 @@ public final class AirCourierDeliveryService {
 	public static @Nullable PhantomPortBlockEntity resolveTargetPhantomPort(
 		@Nullable ServerLevel level, @Nullable BlockPos pos
 	) {
-		if (level == null || pos == null || !level.isPositionEntityTicking(pos)) return null;
+		if (level == null || pos == null || !level.isPositionEntityTicking(pos))
+			return null;
 		return level.getBlockEntity(pos) instanceof PhantomPortBlockEntity be ? be : null;
 	}
 
 	public static @Nullable ServerPlayer resolvePlayer(
 		net.minecraft.server.MinecraftServer server, @Nullable UUID playerId
 	) {
-		if (playerId == null) return null;
+		if (playerId == null)
+			return null;
 		ServerPlayer player = server.getPlayerList().getPlayer(playerId);
 		return player != null && player.isAlive() ? player : null;
 	}

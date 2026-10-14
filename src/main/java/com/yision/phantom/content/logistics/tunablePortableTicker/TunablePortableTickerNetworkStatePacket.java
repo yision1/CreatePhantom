@@ -1,18 +1,22 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
-import com.yision.phantom.network.AllPackets;
 import java.util.UUID;
+
+import com.yision.phantom.network.AllPackets;
+
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 public record TunablePortableTickerNetworkStatePacket(TunablePortableTickerLocator locator, int channel,
-	UUID sessionNetwork, boolean isAdmin, boolean isLocked) implements ClientboundPacketPayload {
+													  UUID sessionNetwork, boolean isAdmin, boolean isLocked) implements
+	ClientboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerNetworkStatePacket> STREAM_CODEC =
 		StreamCodec.composite(
 			TunablePortableTickerLocator.STREAM_CODEC, TunablePortableTickerNetworkStatePacket::locator,

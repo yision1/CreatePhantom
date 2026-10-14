@@ -1,12 +1,14 @@
 package com.yision.phantom.logistics.address;
 
 import com.simibubi.create.content.logistics.box.PackageItem;
+
 import net.minecraft.world.item.ItemStack;
 
 public final class PhantomAddressRules {
 	private static final String COMMENT_MARKER = "//";
 
-	private PhantomAddressRules() {}
+	private PhantomAddressRules() {
+	}
 
 	public static String canonical(String address) {
 		if (address == null) {

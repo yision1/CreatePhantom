@@ -1,10 +1,13 @@
 package com.yision.phantom.logistics.courier;
 
+import org.jetbrains.annotations.Nullable;
+
 import com.simibubi.create.content.logistics.box.PackageItem;
+import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry.TargetLocation;
+import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry;
 import com.yision.phantom.entity.courier.AirCourierEntity;
 import com.yision.phantom.logistics.address.PhantomAddressRules;
-import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry;
-import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry.TargetLocation;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -12,10 +15,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.Nullable;
 
 public final class AirCourierDispatchService {
-	private AirCourierDispatchService() {}
+	private AirCourierDispatchService() {
+	}
 
 	public static @Nullable AirCourierTarget resolvePackageTarget(ServerLevel level, ItemStack box,
 		Vec3 origin, @Nullable ResourceKey<Level> sourceDimension, @Nullable BlockPos sourcePos) {
@@ -30,7 +33,8 @@ public final class AirCourierDispatchService {
 		return findPhantomPortExcludingSource(level, box, origin, sourceDimension, sourcePos);
 	}
 
-	private static @Nullable AirCourierTarget.PhantomPortTarget findPhantomPortExcludingSource(ServerLevel level, ItemStack box,
+	private static @Nullable AirCourierTarget.PhantomPortTarget findPhantomPortExcludingSource(ServerLevel level,
+		ItemStack box,
 		Vec3 origin, @Nullable ResourceKey<Level> sourceDimension, @Nullable BlockPos sourcePos) {
 		if (!PackageItem.isPackage(box)) {
 			return null;
@@ -41,7 +45,7 @@ public final class AirCourierDispatchService {
 		}
 		TargetLocation location = PhantomPortTargetRegistry.findMatchingAnyDimension(level, address, origin,
 			sourceDimension, sourcePos, target -> AirCourierDimensionRules.canTarget(level, target.dimension())
-					&& canReceivePhantomPortTarget(level, target, box));
+				&& canReceivePhantomPortTarget(level, target, box));
 		if (location == null) {
 			return null;
 		}
@@ -58,8 +62,8 @@ public final class AirCourierDispatchService {
 				yield player != null && player.isAlive()
 					&& player.serverLevel().dimension().equals(playerTarget.dimension());
 			}
-			case AirCourierTarget.PhantomPortTarget phantomPortTarget ->
-				canReceivePhantomPortTarget(level, new TargetLocation(phantomPortTarget.dimension(), phantomPortTarget.pos(), ""), box);
+			case AirCourierTarget.PhantomPortTarget phantomPortTarget -> canReceivePhantomPortTarget(level,
+				new TargetLocation(phantomPortTarget.dimension(), phantomPortTarget.pos(), ""), box);
 		};
 	}
 

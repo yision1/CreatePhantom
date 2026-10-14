@@ -1,17 +1,20 @@
 package com.yision.phantom.block.phantomport;
 
+import org.jetbrains.annotations.NotNull;
+
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.logistics.address.PhantomAddressRules;
 import com.yision.phantom.registry.AllItems;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
-import org.jetbrains.annotations.NotNull;
 
 final class PhantomPortInventory {
 
@@ -206,10 +209,12 @@ final class PhantomPortInventory {
 
 	boolean dropOneCarrier() {
 		ItemStack carrier = extractOneCarrier(true);
-		if (carrier.isEmpty() || port.getLevel() == null) return false;
+		if (carrier.isEmpty() || port.getLevel() == null)
+			return false;
 		BlockPos pos = port.getBlockPos();
 		if (!port.getLevel().addFreshEntity(new ItemEntity(port.getLevel(),
-			pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, carrier.copy()))) return false;
+			pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, carrier.copy())))
+			return false;
 		extractOneCarrier(false);
 		return true;
 	}

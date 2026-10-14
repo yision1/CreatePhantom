@@ -1,16 +1,19 @@
 package com.yision.phantom.logistics.courier.flight;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.Nullable;
 
 public final class AirCourierFlightPlanner {
 	private static final double SPEED_ACCELERATION = 0.015;
 	private static final double SPEED_DECELERATION = 0.02;
 
-	private AirCourierFlightPlanner() {}
+	private AirCourierFlightPlanner() {
+	}
 
-	public record FlightStep(Vec3 motion, boolean complete) {}
+	public record FlightStep(Vec3 motion, boolean complete) {
+	}
 
 	public static FlightStep takeoff(AirCourierFlightProfile profile,
 		Vec3 position, Vec3 currentMotion, Vec3 launchDirection,
@@ -32,7 +35,8 @@ public final class AirCourierFlightPlanner {
 
 		double u = Mth.clamp((double) phaseTicks / takeoffDuration, 0.0, 1.0);
 		Vec3 tangent = hermiteTangent(p0, takeoffTarget, m0, m1, u);
-		double speed = smoothSpeed(currentMotion, Mth.lerp(u, profile.takeoffSpeed(), profile.cruiseSpeed()), SPEED_ACCELERATION);
+		double speed =
+			smoothSpeed(currentMotion, Mth.lerp(u, profile.takeoffSpeed(), profile.cruiseSpeed()), SPEED_ACCELERATION);
 		Vec3 motion = steerTowards(position, currentMotion, position.add(tangent), speed, 0.4, 3.0);
 
 		boolean complete = phaseTicks >= takeoffDuration
@@ -65,8 +69,10 @@ public final class AirCourierFlightPlanner {
 			Math.max(0, profile.cruiseStraightenTicks() - phaseTicks));
 		Vec3 motion = steerTowards(position, currentMotion, approachGate,
 			smoothSpeed(currentMotion, AirCourierFlightMath.closingSpeed(profile, distanceToLanding,
-				playerTarget ? profile.playerCompletionDistance() : profile.phantomPortCompletionDistance(), false, playerTarget),
-				playerTarget || movingTarget ? AirCourierFlightMath.pursuitAcceleration(distanceToLanding) : SPEED_ACCELERATION),
+					playerTarget ? profile.playerCompletionDistance() : profile.phantomPortCompletionDistance(), false,
+					playerTarget),
+				playerTarget || movingTarget ? AirCourierFlightMath.pursuitAcceleration(distanceToLanding) :
+					SPEED_ACCELERATION),
 			curveAmount, profile.cruiseTurnDegrees());
 
 		boolean complete = distanceToGate < profile.approachGateNearDistance()
@@ -95,8 +101,10 @@ public final class AirCourierFlightPlanner {
 		Vec3 motion = steerTowards(position, currentMotion, aimTarget,
 			speed, curveAmount, profile.landingTurnDegrees());
 
-		double maxDownSpeed = playerTarget ? Math.max(profile.landingMaxDownSpeed(), pursuitSpeed) : profile.landingMaxDownSpeed();
-		double maxUpSpeed = playerTarget ? Math.max(profile.landingMaxUpSpeed(), pursuitSpeed) : profile.landingMaxUpSpeed();
+		double maxDownSpeed =
+			playerTarget ? Math.max(profile.landingMaxDownSpeed(), pursuitSpeed) : profile.landingMaxDownSpeed();
+		double maxUpSpeed =
+			playerTarget ? Math.max(profile.landingMaxUpSpeed(), pursuitSpeed) : profile.landingMaxUpSpeed();
 		double verticalSpeed = Mth.clamp(motion.y, -maxDownSpeed, maxUpSpeed);
 		verticalSpeed = Mth.clamp(verticalSpeed, currentMotion.y - SPEED_DECELERATION,
 			currentMotion.y + SPEED_DECELERATION);
@@ -134,7 +142,8 @@ public final class AirCourierFlightPlanner {
 		double nearCurve, double farCurve, int extraDistanceTicks) {
 		double augmentedDistance = distance + Math.max(0, extraDistanceTicks);
 		double clampedDistance = Mth.clamp(augmentedDistance, profile.curveDistanceMin(), profile.curveDistanceMax());
-		double t = (clampedDistance - profile.curveDistanceMin()) / (profile.curveDistanceMax() - profile.curveDistanceMin());
+		double t =
+			(clampedDistance - profile.curveDistanceMin()) / (profile.curveDistanceMax() - profile.curveDistanceMin());
 		return Mth.lerp(t, nearCurve, farCurve);
 	}
 

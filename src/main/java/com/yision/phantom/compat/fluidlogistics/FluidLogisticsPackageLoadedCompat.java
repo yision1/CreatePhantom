@@ -7,7 +7,8 @@ import net.minecraft.world.item.ItemStack;
 
 public final class FluidLogisticsPackageLoadedCompat {
 
-	private FluidLogisticsPackageLoadedCompat() {}
+	private FluidLogisticsPackageLoadedCompat() {
+	}
 
 	public static BigItemStack getDisplayEntry(ItemStack stack) {
 		if (PackageResources.isBootstrapped()) {

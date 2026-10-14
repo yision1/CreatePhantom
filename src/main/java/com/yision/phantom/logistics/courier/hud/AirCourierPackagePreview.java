@@ -1,15 +1,19 @@
 package com.yision.phantom.logistics.courier.hud;
 
-import com.simibubi.create.content.logistics.box.PackageItem;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.simibubi.create.content.logistics.box.PackageItem;
+
 import net.minecraft.world.item.ItemStack;
+
 import net.neoforged.neoforge.items.ItemStackHandler;
 
 public final class AirCourierPackagePreview {
 	public static final int MAX_DISPLAY_STACKS = 9;
 
-	private AirCourierPackagePreview() {}
+	private AirCourierPackagePreview() {
+	}
 
 	public static List<ItemStack> fromPackage(ItemStack box) {
 		if (box == null || box.isEmpty() || !PackageItem.isPackage(box)) {

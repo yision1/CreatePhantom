@@ -1,24 +1,27 @@
 package com.yision.phantom.content.logistics.tunablePortableTicker;
 
-import com.simibubi.create.foundation.networking.BlockEntityConfigurationPacket;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.jetbrains.annotations.Nullable;
+
+import com.simibubi.create.foundation.networking.BlockEntityConfigurationPacket;
+
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientboundBundlePacket;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.level.Level;
-import org.jetbrains.annotations.Nullable;
 
-/** Routes native packets only while a validated portable operation is executing. */
 public final class PortableTickerPacketContext implements AutoCloseable {
-	private enum Phase { SEND, SERVER, RECEIVE }
+	private enum Phase {SEND, SERVER, RECEIVE}
+
 	private static final ThreadLocal<PortableTickerPacketContext> ACTIVE = new ThreadLocal<>();
 
 	private final @Nullable PortableTickerPacketContext previous;
@@ -51,7 +54,8 @@ public final class PortableTickerPacketContext implements AutoCloseable {
 		return new PortableTickerPacketContext(Phase.SERVER, menu, requestId, data, position, player);
 	}
 
-	public static PortableTickerPacketContext receiving(TunablePortableTickerMenu menu, int requestId, BlockPos position) {
+	public static PortableTickerPacketContext receiving(TunablePortableTickerMenu menu, int requestId,
+		BlockPos position) {
 		return new PortableTickerPacketContext(Phase.RECEIVE, menu, requestId, menu.getStockData(), position, null);
 	}
 
@@ -79,7 +83,8 @@ public final class PortableTickerPacketContext implements AutoCloseable {
 		if (context.phase == Phase.SEND && packet instanceof ServerboundCustomPayloadPacket custom
 			&& custom.payload() instanceof BlockEntityConfigurationPacket<?>) {
 			return new ServerboundCustomPayloadPacket(new TunablePortableTickerConfigurationPacket(
-				context.menu.locator, context.menu.channel, context.menu.sessionNetwork, context.requestId, custom.payload()));
+				context.menu.locator, context.menu.channel, context.menu.sessionNetwork, context.requestId,
+				custom.payload()));
 		}
 		if (context.phase != Phase.SERVER || context.requestId <= 0
 			|| !(connection.getPacketListener() instanceof ServerGamePacketListenerImpl listener)
@@ -89,7 +94,8 @@ public final class PortableTickerPacketContext implements AutoCloseable {
 			&& custom.payload() instanceof ClientboundPacketPayload
 			&& !(custom.payload() instanceof TunablePortableTickerStockPacket)) {
 			return new ClientboundCustomPayloadPacket(new TunablePortableTickerStockPacket(context.menu.locator,
-				context.menu.channel, context.menu.sessionNetwork, context.requestId, context.position, custom.payload()));
+				context.menu.channel, context.menu.sessionNetwork, context.requestId, context.position,
+				custom.payload()));
 		}
 		if (packet instanceof ClientboundBundlePacket bundle) {
 			List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();

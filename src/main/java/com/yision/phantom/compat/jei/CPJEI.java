@@ -1,6 +1,7 @@
 package com.yision.phantom.compat.jei;
 
 import com.yision.phantom.CreatePhantom;
+
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
@@ -17,7 +18,8 @@ public class CPJEI implements IModPlugin {
 
 	@Override
 	public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
-		registration.addUniversalRecipeTransferHandler(new TunablePortableTickerTransferHandler(registration.getJeiHelpers()));
+		registration.addUniversalRecipeTransferHandler(
+			new TunablePortableTickerTransferHandler(registration.getJeiHelpers()));
 	}
 
 }
