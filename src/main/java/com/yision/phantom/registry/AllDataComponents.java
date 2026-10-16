@@ -67,6 +67,13 @@ public final class AllDataComponents {
 			builder -> builder.persistent(Codec.STRING.listOf())
 				.networkSynchronized(CatnipStreamCodecBuilders.list(ByteBufCodecs.STRING_UTF8)));
 
+	public static final Supplier<DataComponentType<Map<UUID, List<Integer>>>>
+		STORAGE_CHANNEL_EXTENSION_CARD_HIDDEN_CATEGORIES =
+		REGISTER.registerComponentType("storage_channel_extension_card_hidden_categories",
+			builder -> builder.persistent(Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.INT.listOf()))
+				.networkSynchronized(ByteBufCodecs.map(HashMap::new, UUIDUtil.STREAM_CODEC,
+					CatnipStreamCodecBuilders.list(ByteBufCodecs.INT))));
+
 	public static final Supplier<DataComponentType<ItemContainerContents>> TUNABLE_PORTABLE_TICKER_CARDS =
 		REGISTER.registerComponentType("tunable_portable_ticker_cards",
 			builder -> builder.persistent(ItemContainerContents.CODEC)

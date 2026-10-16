@@ -43,6 +43,7 @@ public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
 
 	public TunablePortableTickerScreen(TunablePortableTickerMenu menu, Inventory inventory, Component title) {
 		super(menu, inventory, title);
+		menu.getStockData().resetRefreshClock();
 		for (int slot = 0; slot < menu.getCards().size(); slot++)
 			if (TunablePortableTickerItem.isValidCard(menu.getCards().get(slot)))
 				visibleChannels.add(slot);
@@ -59,7 +60,8 @@ public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
 		savedOnClose = false;
 		channelBarX = getGuiLeft() - 15 + STOCK_KEEPER_VISIBLE_RIGHT;
 		channelBarY = getGuiTop() + 30;
-		getMenu().getStockData().refreshClientStockSnapshot();
+		if (getMenu().stockRequestId == 0)
+			getMenu().getStockData().refreshClientStockSnapshot();
 	}
 
 	public PortableTickerAddressEditBox createAddressBox(Font font, int x, int y, int width, int height,
@@ -141,7 +143,7 @@ public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
 	private void saveSession() {
 		if (hasOpenSession()) {
 			TunablePortableTickerItem.saveHiddenCategories(getMenu().getTickerStack(), getMenu().player.getUUID(),
-				getMenu().getSessionNetwork(), new ArrayList<>(nativeState().createphantom$getHiddenCategories()));
+				getMenu().getChannel(), new ArrayList<>(nativeState().createphantom$getHiddenCategories()));
 			super.removed();
 		}
 	}
@@ -161,7 +163,6 @@ public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
 
 	@Override
 	public void removed() {
-		// JEI may temporarily replace the screen while retaining the same menu.
 		saveRemovedSession();
 		ClientScreenStorage.close(getMenu());
 	}

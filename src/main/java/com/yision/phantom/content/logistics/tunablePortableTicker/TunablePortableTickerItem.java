@@ -19,7 +19,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -74,7 +76,9 @@ public class TunablePortableTickerItem extends Item {
 	public static ItemStack getCard(ItemStack ticker, int index) {
 		if (index < 0 || index >= MAX_CHANNELS)
 			return ItemStack.EMPTY;
-		return getCards(ticker).get(index);
+		ItemContainerContents cards = ticker.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_CARDS,
+			ItemContainerContents.EMPTY);
+		return index < cards.getSlots() ? cards.getStackInSlot(index).copy() : ItemStack.EMPTY;
 	}
 
 	@Nullable
@@ -122,28 +126,47 @@ public class TunablePortableTickerItem extends Item {
 		return addresses.getOrDefault(network, "");
 	}
 
-	public static void saveHiddenCategories(ItemStack ticker, UUID playerUUID, UUID network, List<Integer> indices) {
-		Map<UUID, Map<UUID, List<Integer>>> existing =
-			ticker.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_HIDDEN_CATEGORIES, Map.of());
-		Map<UUID, Map<UUID, List<Integer>>> hidden = new HashMap<>();
-		existing.forEach((k, v) -> hidden.put(k, new HashMap<>(v)));
-		Map<UUID, List<Integer>> playerMap = new HashMap<>(hidden.getOrDefault(playerUUID, Map.of()));
+	public static void saveHiddenCategories(ItemStack ticker, UUID playerUUID, int channel, List<Integer> indices) {
+		ItemStack card = getCard(ticker, channel);
+		if (!isValidCard(card))
+			return;
+		Map<UUID, List<Integer>> hidden = new HashMap<>(hiddenCategoriesForCard(ticker, card));
 		if (indices.isEmpty())
-			playerMap.remove(network);
-		else
-			playerMap.put(network, indices);
-		if (playerMap.isEmpty())
 			hidden.remove(playerUUID);
 		else
-			hidden.put(playerUUID, playerMap);
-		ticker.set(AllDataComponents.TUNABLE_PORTABLE_TICKER_HIDDEN_CATEGORIES, hidden);
+			hidden.put(playerUUID, List.copyOf(indices));
+		card.set(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_HIDDEN_CATEGORIES, hidden);
+		List<ItemStack> cards = getCards(ticker);
+		cards.set(channel, card);
+		setCards(ticker, cards);
 	}
 
-	public static List<Integer> loadHiddenCategories(ItemStack ticker, UUID playerUUID, UUID network) {
-		Map<UUID, Map<UUID, List<Integer>>> hidden =
+	public static List<Integer> loadHiddenCategories(ItemStack ticker, UUID playerUUID, int channel) {
+		return new ArrayList<>(hiddenCategoriesForCard(ticker, getCard(ticker, channel))
+			.getOrDefault(playerUUID, List.of()));
+	}
+
+	static Map<UUID, List<Integer>> hiddenCategoriesForCard(ItemStack ticker, ItemStack card) {
+		if (!isValidCard(card))
+			return Map.of();
+		if (card.has(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_HIDDEN_CATEGORIES))
+			return card.get(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_HIDDEN_CATEGORIES);
+		UUID network = StorageChannelExtensionCardItem.networkFromStack(card);
+		List<ItemStack> categories = StorageChannelExtensionCardItem.loadCategoriesFromStack(card);
+		for (ItemStack other : getCards(ticker)) {
+			if (network.equals(StorageChannelExtensionCardItem.networkFromStack(other))
+				&& !StorageChannelExtensionCardItem.sameCategories(categories,
+					StorageChannelExtensionCardItem.loadCategoriesFromStack(other)))
+				return Map.of();
+		}
+		Map<UUID, Map<UUID, List<Integer>>> legacy =
 			ticker.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_HIDDEN_CATEGORIES, Map.of());
-		Map<UUID, List<Integer>> playerMap = hidden.getOrDefault(playerUUID, Map.of());
-		return new ArrayList<>(playerMap.getOrDefault(network, List.of()));
+		Map<UUID, List<Integer>> hidden = new HashMap<>();
+		legacy.forEach((player, networks) -> {
+			if (networks.containsKey(network))
+				hidden.put(player, List.copyOf(networks.get(network)));
+		});
+		return hidden;
 	}
 
 	@Override
@@ -216,10 +239,27 @@ public class TunablePortableTickerItem extends Item {
 		int finalChannel = channel;
 		UUID finalNetwork = network;
 		var queryPosition = PortableTickerStockData.queryPositionFor(player);
-		player.openMenu(new SimpleMenuProvider(
-				(id, inv, p) -> new TunablePortableTickerMenu(id, inv, locator, finalChannel, finalNetwork,
-					queryPosition),
-				Component.translatable("item.createphantom.tunable_portable_ticker")),
-			buffer -> TunablePortableTickerMenu.writeMenuData(buffer, locator, finalChannel, player, queryPosition));
+		UUID sessionId = UUID.randomUUID();
+		boolean replacingTicker = player.containerMenu instanceof TunablePortableTickerMenu currentMenu
+			&& currentMenu.getLocator().equals(locator);
+		player.openMenu(new MenuProvider() {
+			@Override
+			public Component getDisplayName() {
+				return Component.translatable("item.createphantom.tunable_portable_ticker");
+			}
+
+			@Override
+			public TunablePortableTickerMenu createMenu(int id, Inventory inventory, Player menuPlayer) {
+				return new TunablePortableTickerMenu(id, inventory, locator, finalChannel, finalNetwork,
+					queryPosition, sessionId);
+			}
+
+			@Override
+			public boolean shouldTriggerClientSideContainerClosingOnOpen() {
+				return !replacingTicker;
+			}
+		},
+			buffer -> TunablePortableTickerMenu.writeMenuData(buffer, locator, finalChannel, player, queryPosition,
+				sessionId));
 	}
 }

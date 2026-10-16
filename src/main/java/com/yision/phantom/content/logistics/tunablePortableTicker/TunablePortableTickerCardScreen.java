@@ -211,7 +211,10 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 		if (index < cards.size() - 1)
 			AllGuiTextures.STOCK_KEEPER_CATEGORY_DOWN.render(graphics, CARD_WIDTH + 12, CARD_HEADER - 9);
 
+		pose.pushPose();
+		pose.translate(0, -0.5f, 0);
 		graphics.renderItem(noGlintDisplayCopy(card), 14, 1);
+		pose.popPose();
 		String name = trimmedCardName(card);
 		graphics.drawString(font, name, 35, 5, 0x656565, false);
 

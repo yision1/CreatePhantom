@@ -18,23 +18,29 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 public record TunablePortableTickerStockPacket(TunablePortableTickerLocator locator, int channel, UUID sessionNetwork,
-											   int requestId, BlockPos sourcePosition,
-											   CustomPacketPayload payload) implements ClientboundPacketPayload {
+	UUID sessionId, int requestId, BlockPos sourcePosition, int activeLinks,
+	CustomPacketPayload payload) implements ClientboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerStockPacket> STREAM_CODEC =
-		StreamCodec
-			.composite(TunablePortableTickerLocator.STREAM_CODEC, TunablePortableTickerStockPacket::locator,
-				ByteBufCodecs.VAR_INT, TunablePortableTickerStockPacket::channel,
-				UUIDUtil.STREAM_CODEC, TunablePortableTickerStockPacket::sessionNetwork,
-				ByteBufCodecs.VAR_INT, TunablePortableTickerStockPacket::requestId,
-				BlockPos.STREAM_CODEC, TunablePortableTickerStockPacket::sourcePosition,
-				NativeTickerPayloadCodec.forFlow(PacketFlow.CLIENTBOUND), TunablePortableTickerStockPacket::payload,
-				TunablePortableTickerStockPacket::new);
+		StreamCodec.of((buffer, packet) -> {
+			TunablePortableTickerLocator.STREAM_CODEC.encode(buffer, packet.locator);
+			ByteBufCodecs.VAR_INT.encode(buffer, packet.channel);
+			UUIDUtil.STREAM_CODEC.encode(buffer, packet.sessionNetwork);
+			UUIDUtil.STREAM_CODEC.encode(buffer, packet.sessionId);
+			ByteBufCodecs.VAR_INT.encode(buffer, packet.requestId);
+			BlockPos.STREAM_CODEC.encode(buffer, packet.sourcePosition);
+			ByteBufCodecs.VAR_INT.encode(buffer, packet.activeLinks);
+			NativeTickerPayloadCodec.forFlow(PacketFlow.CLIENTBOUND).encode(buffer, packet.payload);
+		}, buffer -> new TunablePortableTickerStockPacket(TunablePortableTickerLocator.STREAM_CODEC.decode(buffer),
+			ByteBufCodecs.VAR_INT.decode(buffer), UUIDUtil.STREAM_CODEC.decode(buffer),
+			UUIDUtil.STREAM_CODEC.decode(buffer), ByteBufCodecs.VAR_INT.decode(buffer),
+			BlockPos.STREAM_CODEC.decode(buffer), ByteBufCodecs.VAR_INT.decode(buffer),
+			NativeTickerPayloadCodec.forFlow(PacketFlow.CLIENTBOUND).decode(buffer)));
 
 	@Override
 	@OnlyIn(Dist.CLIENT)
 	public void handle(LocalPlayer player) {
-		ClientScreenStorage.receiveNative(player, locator, channel, sessionNetwork, requestId, sourcePosition,
-			payload);
+		ClientScreenStorage.receiveNative(player, locator, channel, sessionNetwork, sessionId, requestId,
+			sourcePosition, activeLinks, payload);
 	}
 
 	@Override

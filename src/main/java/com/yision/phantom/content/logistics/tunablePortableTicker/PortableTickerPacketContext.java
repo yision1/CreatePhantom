@@ -83,8 +83,8 @@ public final class PortableTickerPacketContext implements AutoCloseable {
 		if (context.phase == Phase.SEND && packet instanceof ServerboundCustomPayloadPacket custom
 			&& custom.payload() instanceof BlockEntityConfigurationPacket<?>) {
 			return new ServerboundCustomPayloadPacket(new TunablePortableTickerConfigurationPacket(
-				context.menu.locator, context.menu.channel, context.menu.sessionNetwork, context.requestId,
-				custom.payload()));
+				context.menu.locator, context.menu.channel, context.menu.sessionNetwork, context.menu.sessionId,
+				context.requestId, custom.payload()));
 		}
 		if (context.phase != Phase.SERVER || context.requestId <= 0
 			|| !(connection.getPacketListener() instanceof ServerGamePacketListenerImpl listener)
@@ -94,8 +94,8 @@ public final class PortableTickerPacketContext implements AutoCloseable {
 			&& custom.payload() instanceof ClientboundPacketPayload
 			&& !(custom.payload() instanceof TunablePortableTickerStockPacket)) {
 			return new ClientboundCustomPayloadPacket(new TunablePortableTickerStockPacket(context.menu.locator,
-				context.menu.channel, context.menu.sessionNetwork, context.requestId, context.position,
-				custom.payload()));
+				context.menu.channel, context.menu.sessionNetwork, context.menu.sessionId, context.requestId,
+				context.position, context.data.getActiveLinks(), custom.payload()));
 		}
 		if (packet instanceof ClientboundBundlePacket bundle) {
 			List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();

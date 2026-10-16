@@ -13,21 +13,13 @@ import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public final class ClientScreenStorage {
-	private static TunablePortableTickerMenu activeMenu;
-	private static int activeRequestId;
-
 	private ClientScreenStorage() {
 	}
 
 	public static void request(TunablePortableTickerMenu menu, Runnable nativeRefresh) {
 		if (!isOpen(menu))
 			return;
-		if (activeMenu != null && activeMenu != menu)
-			activeMenu.getStockData().resetReception();
-		activeMenu = menu;
-		activeRequestId++;
-		menu.getStockData().resetReception();
-		try (var ignored = PortableTickerPacketContext.sending(menu, activeRequestId)) {
+		try (var ignored = PortableTickerPacketContext.sending(menu, ++menu.stockRequestId)) {
 			nativeRefresh.run();
 		}
 	}
@@ -41,16 +33,25 @@ public final class ClientScreenStorage {
 	}
 
 	public static void receiveNative(LocalPlayer player, TunablePortableTickerLocator locator, int channel,
-		UUID sessionNetwork, int requestId, BlockPos sourcePosition, CustomPacketPayload payload) {
-		if (!isOpen(activeMenu) || player.containerMenu != activeMenu
-			|| !locator.equals(activeMenu.getLocator()) || channel != activeMenu.getChannel()
-			|| !sessionNetwork.equals(activeMenu.getSessionNetwork()) || requestId != activeRequestId
-			|| !sourcePosition.equals(activeMenu.getStockData().getQueryPosition())
+		UUID sessionNetwork, UUID sessionId, int requestId, BlockPos sourcePosition, int activeLinks,
+		CustomPacketPayload payload) {
+		if (!(player.containerMenu instanceof TunablePortableTickerMenu menu) || !isOpen(menu)
+			|| !locator.equals(menu.getLocator()) || channel != menu.getChannel()
+			|| !sessionNetwork.equals(menu.getSessionNetwork()) || !sessionId.equals(menu.sessionId)
+			|| requestId <= 0 || requestId > menu.stockRequestId
+			|| requestId < menu.receivingStockRequestId
+			|| !sourcePosition.equals(menu.getStockData().getQueryPosition())
 			|| !(payload instanceof ClientboundPacketPayload nativeResponse))
 			return;
-		try (var ignored = PortableTickerPacketContext.receiving(activeMenu, requestId, sourcePosition)) {
+		if (requestId != menu.receivingStockRequestId) {
+			menu.getStockData().resetReception();
+			menu.receivingStockRequestId = requestId;
+		}
+		try (var ignored = PortableTickerPacketContext.receiving(menu, requestId, sourcePosition)) {
 			nativeResponse.handleInternal(player);
 		}
+		if (activeLinks >= 0)
+			menu.getStockData().setActiveLinks(activeLinks);
 	}
 
 	private static boolean isOpen(TunablePortableTickerMenu menu) {
@@ -60,10 +61,8 @@ public final class ClientScreenStorage {
 	}
 
 	public static void close(TunablePortableTickerMenu menu) {
-		if (activeMenu != menu)
+		if (isOpen(menu))
 			return;
 		menu.getStockData().resetReception();
-		activeMenu = null;
-		activeRequestId++;
 	}
 }

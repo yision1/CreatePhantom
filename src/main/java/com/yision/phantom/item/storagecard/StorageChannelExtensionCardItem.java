@@ -3,6 +3,7 @@ package com.yision.phantom.item.storagecard;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -123,6 +124,8 @@ public class StorageChannelExtensionCardItem extends Item {
 	}
 
 	public static void assignFrequency(ItemStack stack, Player player, UUID frequency) {
+		if (!frequency.equals(networkFromStack(stack)))
+			stack.set(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_HIDDEN_CATEGORIES, Map.of());
 		CompoundTag tag =
 			stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY).copyTag();
 		tag.putUUID("Freq", frequency);
@@ -147,8 +150,21 @@ public class StorageChannelExtensionCardItem extends Item {
 	}
 
 	public static void saveCategoriesToStack(ItemStack stack, List<ItemStack> categories) {
-		if (categories != null)
+		if (categories != null) {
+			if (!sameCategories(loadCategoriesFromStack(stack), categories))
+				stack.set(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_HIDDEN_CATEGORIES, Map.of());
 			stack.set(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_CATEGORIES, categories);
+		}
+	}
+
+	public static boolean sameCategories(List<ItemStack> first, List<ItemStack> second) {
+		if (first.size() != second.size())
+			return false;
+		for (int i = 0; i < first.size(); i++) {
+			if (!ItemStack.matches(first.get(i), second.get(i)))
+				return false;
+		}
+		return true;
 	}
 
 	public static List<ItemStack> loadCategoriesFromStack(ItemStack stack) {

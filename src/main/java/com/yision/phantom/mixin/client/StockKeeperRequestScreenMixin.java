@@ -14,6 +14,7 @@ import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.logistics.AddressEditBox;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestScreen;
@@ -57,7 +58,9 @@ public abstract class StockKeeperRequestScreenMixin implements StockKeeperReques
 	@WrapOperation(method = "<init>", at = @At(value = "INVOKE",
 		target = "Lnet/minecraft/world/entity/player/Player;getMainHandItem()Lnet/minecraft/world/item/ItemStack;"))
 	private ItemStack createphantom$portableMode(Player player, Operation<ItemStack> original) {
-		return (Object) this instanceof TunablePortableTickerScreen ? ItemStack.EMPTY : original.call(player);
+		ItemStack held = original.call(player);
+		return (Object) this instanceof TunablePortableTickerScreen && !AllBlocks.CLIPBOARD.isIn(held)
+			? ItemStack.EMPTY : held;
 	}
 
 	@WrapOperation(method = "<init>", at = @At(value = "INVOKE",

@@ -2,9 +2,12 @@ package com.yision.phantom.content.logistics.tunablePortableTicker;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
@@ -13,6 +16,7 @@ import com.simibubi.create.foundation.networking.BlockEntityConfigurationPacket;
 import com.simibubi.create.foundation.utility.AdventureUtil;
 
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
@@ -50,18 +54,22 @@ public final class TunablePortableTickerSession {
 		boolean queryPosition = position.equals(menu.getStockData().getQueryPosition());
 		if (!queryPosition && (requestId > 0 || !player.canInteractWithBlock(position, 20)))
 			return;
-		if (requestId > 0 && !allowStockRequest(player, menu, requestId))
+		if (requestId > 0 && !allowStockRequest(player, menu, requestId, payload.type().id()))
 			return;
 		ItemStack stack = menu.locator.resolve(player);
 		PortableTickerStockData data =
 			PortableTickerStockData.forRequest(player, stack, menu.channel, menu.sessionNetwork, position);
+		String previousAddress = data.getAddress();
+		List<Integer> previousHiddenCategories = List.copyOf(data.getHiddenCategories(player.getUUID()));
 		try (var ignored = PortableTickerPacketContext.handling(menu, player, requestId, data, position)) {
 			nativePacket.handle(player);
 		}
-		if (requestId == 0) {
+		if (requestId != 0)
+			return;
+		if (!Objects.equals(previousAddress, data.getAddress()))
 			TunablePortableTickerItem.saveAddress(stack, menu.sessionNetwork, sanitizeAddress(data.getAddress()));
+		if (!previousHiddenCategories.equals(data.getHiddenCategories(player.getUUID())))
 			saveHiddenCategories(player, menu, stack, data.getHiddenCategories(player.getUUID()));
-		}
 	}
 
 	private static void saveHiddenCategories(ServerPlayer player, TunablePortableTickerMenu menu, ItemStack stack,
@@ -75,20 +83,21 @@ public final class TunablePortableTickerSession {
 			if (sanitized.size() >= MAX_HIDDEN_CATEGORIES)
 				break;
 		}
-		TunablePortableTickerItem.saveHiddenCategories(stack, player.getUUID(), menu.sessionNetwork, sanitized);
+		TunablePortableTickerItem.saveHiddenCategories(stack, player.getUUID(), menu.channel, sanitized);
 	}
 
-	private static boolean allowStockRequest(ServerPlayer player, TunablePortableTickerMenu menu, int requestId) {
+	private static boolean allowStockRequest(ServerPlayer player, TunablePortableTickerMenu menu, int requestId,
+		ResourceLocation payloadType) {
 		long gameTime = player.serverLevel().getGameTime();
-		RequestKey key = new RequestKey(player.getUUID(), menu.containerId, menu.channel, menu.sessionNetwork);
+		RequestKey key = new RequestKey(player.getUUID(), menu.sessionId);
 		RequestStamp previous = LAST_STOCK_REQUEST.get(key);
 		if (previous != null && requestId == previous.requestId)
-			return gameTime - previous.gameTime < MIN_STOCK_REQUEST_INTERVAL;
-		if (previous != null && (requestId < previous.requestId
+			return gameTime - previous.gameTime < MIN_STOCK_REQUEST_INTERVAL && previous.payloadTypes.add(payloadType);
+		if (previous != null && (requestId <= previous.requestId
 			|| gameTime - previous.gameTime < MIN_STOCK_REQUEST_INTERVAL)) {
 			return false;
 		}
-		LAST_STOCK_REQUEST.put(key, new RequestStamp(gameTime, requestId));
+		LAST_STOCK_REQUEST.put(key, new RequestStamp(gameTime, requestId, new HashSet<>(Set.of(payloadType))));
 		return true;
 	}
 
@@ -105,13 +114,17 @@ public final class TunablePortableTickerSession {
 		LAST_STOCK_REQUEST.keySet().removeIf(key -> key.playerId.equals(player.getUUID()));
 	}
 
+	public static void clearSession(ServerPlayer player, UUID sessionId) {
+		LAST_STOCK_REQUEST.remove(new RequestKey(player.getUUID(), sessionId));
+	}
+
 	public static void clearAll() {
 		LAST_STOCK_REQUEST.clear();
 	}
 
-	private record RequestKey(UUID playerId, int containerId, int channel, UUID network) {
+	private record RequestKey(UUID playerId, UUID sessionId) {
 	}
 
-	private record RequestStamp(long gameTime, int requestId) {
+	private record RequestStamp(long gameTime, int requestId, Set<ResourceLocation> payloadTypes) {
 	}
 }

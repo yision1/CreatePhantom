@@ -30,7 +30,7 @@ public final class PortableTickerStockData extends StockTickerBlockEntity {
 		previouslyUsedAddress = network == null ? "" : TunablePortableTickerItem.loadAddress(ticker, network);
 		if (network != null)
 			hiddenCategoriesByPlayer.put(player.getUUID(),
-				TunablePortableTickerItem.loadHiddenCategories(ticker, player.getUUID(), network));
+				TunablePortableTickerItem.loadHiddenCategories(ticker, player.getUUID(), channel));
 	}
 
 	public static PortableTickerStockData forRequest(Player player, ItemStack ticker, int channel, UUID network,
@@ -75,6 +75,18 @@ public final class PortableTickerStockData extends StockTickerBlockEntity {
 
 	public void advanceRefreshClock() {
 		ticksSinceLastUpdate++;
+	}
+
+	public void resetRefreshClock() {
+		ticksSinceLastUpdate = 0;
+	}
+
+	public int getActiveLinks() {
+		return activeLinks;
+	}
+
+	public void setActiveLinks(int activeLinks) {
+		this.activeLinks = activeLinks;
 	}
 
 	@Override

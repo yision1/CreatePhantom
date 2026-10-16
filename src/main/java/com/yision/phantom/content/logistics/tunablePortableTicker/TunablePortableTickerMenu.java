@@ -8,6 +8,7 @@ import com.simibubi.create.content.logistics.stockTicker.StockKeeperRequestMenu;
 import com.yision.phantom.registry.AllMenuTypes;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,9 +20,12 @@ public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 	public final TunablePortableTickerLocator locator;
 	public final int channel;
 	public final UUID sessionNetwork;
+	public final UUID sessionId;
 	public final ItemStack tickerStack;
 	public final List<ItemStack> cards;
 	public boolean switchingChannel;
+	int stockRequestId;
+	int receivingStockRequestId;
 
 	private TunablePortableTickerMenu(int id, Inventory inventory, RegistryFriendlyByteBuf extraData) {
 		this(id, inventory, readMenuData(extraData));
@@ -29,7 +33,8 @@ public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 
 	private TunablePortableTickerMenu(int id, Inventory inventory, MenuData data) {
 		this(id, inventory, data.locator, data.channel,
-			TunablePortableTickerItem.networkFromChannel(data.stack, data.channel), data.queryPosition, data.stack);
+			TunablePortableTickerItem.networkFromChannel(data.stack, data.channel), data.queryPosition, data.stack,
+			data.sessionId);
 		setNetworkState(data.admin, data.locked);
 	}
 
@@ -41,16 +46,23 @@ public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 
 	public TunablePortableTickerMenu(int id, Inventory inventory, TunablePortableTickerLocator locator,
 		int channel, UUID sessionNetwork, BlockPos queryPosition) {
-		this(id, inventory, locator, channel, sessionNetwork, queryPosition, locator.resolve(inventory.player));
+		this(id, inventory, locator, channel, sessionNetwork, queryPosition, UUID.randomUUID());
+	}
+
+	public TunablePortableTickerMenu(int id, Inventory inventory, TunablePortableTickerLocator locator,
+		int channel, UUID sessionNetwork, BlockPos queryPosition, UUID sessionId) {
+		this(id, inventory, locator, channel, sessionNetwork, queryPosition, locator.resolve(inventory.player),
+			sessionId);
 	}
 
 	private TunablePortableTickerMenu(int id, Inventory inventory, TunablePortableTickerLocator locator,
-		int channel, UUID sessionNetwork, BlockPos queryPosition, ItemStack stack) {
+		int channel, UUID sessionNetwork, BlockPos queryPosition, ItemStack stack, UUID sessionId) {
 		super(AllMenuTypes.TUNABLE_PORTABLE_TICKER.get(), id, inventory,
 			new PortableTickerStockData(inventory.player, stack, channel, sessionNetwork, queryPosition));
 		this.locator = locator;
 		this.channel = channel;
 		this.sessionNetwork = sessionNetwork;
+		this.sessionId = sessionId;
 		refreshNetworkState(player);
 		tickerStack = stack.getItem() instanceof TunablePortableTickerItem ? stack : ItemStack.EMPTY;
 		cards = TunablePortableTickerItem.getCards(stack);
@@ -102,6 +114,8 @@ public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 		ItemStack resolved = locator.resolve(player);
 		if (!(resolved.getItem() instanceof TunablePortableTickerItem))
 			return false;
+		if (player instanceof ServerPlayer && resolved != tickerStack)
+			return false;
 		UUID network = TunablePortableTickerItem.networkFromChannel(resolved, channel);
 		if (sessionNetwork == null || !sessionNetwork.equals(network))
 			return false;
@@ -123,10 +137,11 @@ public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 	}
 
 	public static void writeMenuData(RegistryFriendlyByteBuf buffer, TunablePortableTickerLocator locator,
-		int channel, ServerPlayer player, BlockPos queryPosition) {
+		int channel, ServerPlayer player, BlockPos queryPosition, UUID sessionId) {
 		TunablePortableTickerLocator.STREAM_CODEC.encode(buffer, locator);
 		ByteBufCodecs.INT.encode(buffer, channel);
 		BlockPos.STREAM_CODEC.encode(buffer, queryPosition);
+		UUIDUtil.STREAM_CODEC.encode(buffer, sessionId);
 		ItemStack stack = locator.resolve(player);
 		ItemStack.STREAM_CODEC.encode(buffer, stack);
 		UUID network = TunablePortableTickerItem.networkFromChannel(stack, channel);
@@ -137,12 +152,20 @@ public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 
 	private static MenuData readMenuData(RegistryFriendlyByteBuf buffer) {
 		return new MenuData(TunablePortableTickerLocator.STREAM_CODEC.decode(buffer), ByteBufCodecs.INT.decode(buffer),
-			BlockPos.STREAM_CODEC.decode(buffer), ItemStack.STREAM_CODEC.decode(buffer), buffer.readBoolean(),
+			BlockPos.STREAM_CODEC.decode(buffer), UUIDUtil.STREAM_CODEC.decode(buffer),
+			ItemStack.STREAM_CODEC.decode(buffer), buffer.readBoolean(),
 			buffer.readBoolean());
 	}
 
-	private record MenuData(TunablePortableTickerLocator locator, int channel, BlockPos queryPosition,
+	private record MenuData(TunablePortableTickerLocator locator, int channel, BlockPos queryPosition, UUID sessionId,
 							ItemStack stack, boolean admin, boolean locked) {
+	}
+
+	@Override
+	public void removed(Player player) {
+		super.removed(player);
+		if (player instanceof ServerPlayer serverPlayer)
+			TunablePortableTickerSession.clearSession(serverPlayer, sessionId);
 	}
 
 	private void refreshNetworkState(Player player) {

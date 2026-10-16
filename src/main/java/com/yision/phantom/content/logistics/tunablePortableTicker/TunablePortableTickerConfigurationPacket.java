@@ -14,14 +14,14 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 
 public record TunablePortableTickerConfigurationPacket(TunablePortableTickerLocator locator, int channel,
-													   UUID sessionNetwork, int requestId,
-													   CustomPacketPayload payload) implements
-	ServerboundPacketPayload {
+	UUID sessionNetwork, UUID sessionId, int requestId, CustomPacketPayload payload)
+	implements ServerboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerConfigurationPacket> STREAM_CODEC =
 		StreamCodec.composite(TunablePortableTickerLocator.STREAM_CODEC,
 			TunablePortableTickerConfigurationPacket::locator,
 			ByteBufCodecs.VAR_INT, TunablePortableTickerConfigurationPacket::channel,
 			UUIDUtil.STREAM_CODEC, TunablePortableTickerConfigurationPacket::sessionNetwork,
+			UUIDUtil.STREAM_CODEC, TunablePortableTickerConfigurationPacket::sessionId,
 			ByteBufCodecs.VAR_INT, TunablePortableTickerConfigurationPacket::requestId,
 			NativeTickerPayloadCodec.forFlow(PacketFlow.SERVERBOUND),
 			TunablePortableTickerConfigurationPacket::payload,
@@ -31,7 +31,7 @@ public record TunablePortableTickerConfigurationPacket(TunablePortableTickerLoca
 	public void handle(ServerPlayer player) {
 		TunablePortableTickerMenu menu = TunablePortableTickerSession.resolve(player, locator, channel,
 			sessionNetwork);
-		if (menu != null)
+		if (menu != null && sessionId.equals(menu.sessionId))
 			TunablePortableTickerSession.applyNativePacket(player, menu, payload, requestId);
 	}
 

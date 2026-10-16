@@ -57,7 +57,7 @@ public enum AllPackets implements BasePacketPayload.PacketTypeProvider {
 	}
 
 	public static void register() {
-		CatnipPacketRegistry packetRegistry = new CatnipPacketRegistry(CreatePhantom.MODID, 4);
+		CatnipPacketRegistry packetRegistry = new CatnipPacketRegistry(CreatePhantom.MODID, 5);
 		for (AllPackets packet : values())
 			packetRegistry.registerPacket(packet.type);
 		packetRegistry.registerAllPackets();

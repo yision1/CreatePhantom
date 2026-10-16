@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.jetbrains.annotations.NotNull;
 
+import com.yision.phantom.registry.AllDataComponents;
 import com.yision.phantom.registry.AllMenuTypes;
 
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -38,6 +39,8 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	private final int ownerInventorySlot;
 	private final int ownerMenuSlot;
 	private final boolean serverTransaction;
+	private final ItemStack ownerStack;
+	private int selectedChannel;
 	private int activeCardIndex = NO_ACTIVE_CARD;
 	private boolean closed;
 
@@ -63,6 +66,14 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 		this.workingCards = new ItemStackHandler(TunablePortableTickerItem.MAX_CHANNELS);
 		this.initialCards = readCards(openedStack);
 		this.serverTransaction = serverTransaction;
+		this.ownerStack = openedStack;
+		List<ItemStack> originalCards = TunablePortableTickerItem.getCards(openedStack);
+		int originalChannel = TunablePortableTickerItem.getSelectedChannel(openedStack);
+		for (int i = 0; i < Math.min(originalChannel, originalCards.size()); i++) {
+			if (!originalCards.get(i).isEmpty())
+				selectedChannel++;
+		}
+		selectedChannel = Math.min(selectedChannel, Math.max(0, initialCards.size() - 1));
 		if (serverTransaction) {
 			for (int i = 0; i < initialCards.size(); i++)
 				workingCards.setStackInSlot(i, initialCards.get(i));
@@ -96,8 +107,11 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	private static List<ItemStack> readCards(ItemStack openedStack) {
 		List<ItemStack> cards = new ArrayList<>();
 		for (ItemStack stack : TunablePortableTickerItem.getCards(openedStack)) {
-			if (!stack.isEmpty())
+			if (!stack.isEmpty()) {
+				stack.set(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_HIDDEN_CATEGORIES,
+					TunablePortableTickerItem.hiddenCategoriesForCard(openedStack, stack));
 				cards.add(stack);
+			}
 		}
 		return cards;
 	}
@@ -110,7 +124,8 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	}
 
 	public void beginEdit(int cardIndex) {
-		if (!serverTransaction || activeCardIndex != NO_ACTIVE_CARD || !proxyInventory.getStackInSlot(0).isEmpty())
+		if (!serverTransaction || !stillValid(player) || activeCardIndex != NO_ACTIVE_CARD
+			|| !proxyInventory.getStackInSlot(0).isEmpty())
 			return;
 		int cardCount = cardCount();
 		if (cardIndex < -1 || cardIndex >= cardCount)
@@ -130,7 +145,8 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	}
 
 	public void finishEdit(int cardIndex, String name) {
-		if (!serverTransaction || activeCardIndex == NO_ACTIVE_CARD || activeCardIndex != cardIndex)
+		if (!serverTransaction || !stillValid(player) || activeCardIndex == NO_ACTIVE_CARD
+			|| activeCardIndex != cardIndex)
 			return;
 
 		ItemStack card = proxyInventory.getStackInSlot(0);
@@ -149,7 +165,7 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	}
 
 	public void removeCard(int cardIndex) {
-		if (!serverTransaction || activeCardIndex != NO_ACTIVE_CARD
+		if (!serverTransaction || !stillValid(player) || activeCardIndex != NO_ACTIVE_CARD
 			|| cardIndex < 0 || cardIndex >= cardCount())
 			return;
 		ItemStack removed = workingCards.extractItem(cardIndex, 1, false);
@@ -160,7 +176,7 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	}
 
 	public void moveCard(int fromIndex, int toIndex) {
-		if (!serverTransaction || activeCardIndex != NO_ACTIVE_CARD)
+		if (!serverTransaction || !stillValid(player) || activeCardIndex != NO_ACTIVE_CARD)
 			return;
 		List<ItemStack> cards = drainWorkingCards();
 		if (fromIndex < 0 || fromIndex >= cards.size() || toIndex < 0 || toIndex >= cards.size()) {
@@ -169,6 +185,12 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 		}
 		ItemStack moved = cards.remove(fromIndex);
 		cards.add(toIndex, moved);
+		if (selectedChannel == fromIndex)
+			selectedChannel = toIndex;
+		else if (fromIndex < selectedChannel && toIndex >= selectedChannel)
+			selectedChannel--;
+		else if (fromIndex > selectedChannel && toIndex <= selectedChannel)
+			selectedChannel++;
 		restoreWorkingCards(cards);
 	}
 
@@ -188,7 +210,14 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	}
 
 	private void compactWorkingCards() {
-		restoreWorkingCards(drainWorkingCards());
+		int newChannel = 0;
+		for (int i = 0; i < selectedChannel; i++) {
+			if (!workingCards.getStackInSlot(i).isEmpty())
+				newChannel++;
+		}
+		List<ItemStack> cards = drainWorkingCards();
+		selectedChannel = Math.min(newChannel, Math.max(0, cards.size() - 1));
+		restoreWorkingCards(cards);
 	}
 
 	private List<ItemStack> drainWorkingCards() {
@@ -214,10 +243,12 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 		closed = true;
 
 		returnEditingCard();
+		compactWorkingCards();
 		List<ItemStack> cards = drainWorkingCards();
 		ItemStack liveStack = locator.resolve(player);
-		if (liveStack.getItem() instanceof TunablePortableTickerItem) {
+		if (liveStack == ownerStack && liveStack.getItem() instanceof TunablePortableTickerItem) {
 			TunablePortableTickerItem.setCards(liveStack, cards);
+			TunablePortableTickerItem.setSelectedChannel(liveStack, selectedChannel);
 			return;
 		}
 		for (ItemStack card : cards)
@@ -271,7 +302,8 @@ public class TunablePortableTickerCardMenu extends AbstractContainerMenu {
 	@Override
 	public boolean stillValid(Player player) {
 		ItemStack heldStack = locator.resolve(player);
-		return heldStack.getItem() instanceof TunablePortableTickerItem;
+		return heldStack.getItem() instanceof TunablePortableTickerItem
+			&& (!serverTransaction || heldStack == ownerStack);
 	}
 
 	@Override
