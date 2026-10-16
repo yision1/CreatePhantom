@@ -432,13 +432,14 @@ public final class AirCourierTask {
 		state = State.DROP_PENDING;
 		motion = Vec3.ZERO;
 		clearCaches();
-		AirCourierDeliveryService.notifyFailure(server, box, targetPlayerId, hudPlayerId, hudEntryId);
+		AirCourierDeliveryService.notifyFailure(server, box, targetPlayerId, hudPlayerId,
+			hudEntryId != null ? hudEntryId : id);
 		tickDrop(server);
 	}
 
 	private void tickDrop(MinecraftServer server) {
 		ServerLevel level = server.getLevel(currentDimension);
-		if (level == null || !level.isPositionEntityTicking(BlockPos.containing(position)))
+		if (level == null)
 			return;
 		if (!packageDropped) {
 			packageDropped = mission == AirCourierEntity.Mission.CARRIER_RETURN
@@ -729,7 +730,7 @@ public final class AirCourierTask {
 	}
 
 	public @Nullable UUID getHudTrackingPlayerId() {
-		if (mission == AirCourierEntity.Mission.CARRIER_RETURN)
+		if (removed || state == State.DROP_PENDING || mission == AirCourierEntity.Mission.CARRIER_RETURN)
 			return null;
 		return hudPlayerId != null ? hudPlayerId : targetPlayerId;
 	}
