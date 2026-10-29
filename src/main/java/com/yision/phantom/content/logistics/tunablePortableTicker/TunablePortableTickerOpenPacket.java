@@ -10,8 +10,8 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
 
 public record TunablePortableTickerOpenPacket(boolean cardConfig) implements ServerboundPacketPayload {
-	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerOpenPacket> STREAM_CODEC =
-		StreamCodec.composite(
+	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerOpenPacket> STREAM_CODEC = StreamCodec
+		.composite(
 			ByteBufCodecs.BOOL, TunablePortableTickerOpenPacket::cardConfig,
 			TunablePortableTickerOpenPacket::new);
 

@@ -63,8 +63,9 @@ public class CreatePhantom {
 		NeoForge.EVENT_BUS.addListener(AirCourierTaskManager::onServerTick);
 		NeoForge.EVENT_BUS.addListener(PhantomPortTargetRegistry::onServerTick);
 
-		NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartingEvent event) ->
-			AirCourierTaskManager.onServerStarting(event.getServer()));
+		NeoForge.EVENT_BUS
+			.addListener((net.neoforged.neoforge.event.server.ServerStartingEvent event) -> AirCourierTaskManager
+				.onServerStarting(event.getServer()));
 		NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent event) -> {
 			AirCourierTaskManager.onServerStopping();
 			AirCourierHudSync.clearAll();

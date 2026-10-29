@@ -18,7 +18,6 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 @EventBusSubscriber
 public class AllConfigs {
-
 	private static final Map<ModConfig.Type, ConfigBase> CONFIGS = new EnumMap<>(ModConfig.Type.class);
 
 	private static CPClient client;

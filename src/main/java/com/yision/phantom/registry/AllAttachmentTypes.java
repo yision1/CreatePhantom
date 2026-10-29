@@ -11,14 +11,15 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 public final class AllAttachmentTypes {
-	private static final DeferredRegister<AttachmentType<?>> ATTACHMENT_TYPES =
-		DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, CreatePhantom.MODID);
+	private static final DeferredRegister<AttachmentType<?>> ATTACHMENT_TYPES = DeferredRegister
+		.create(NeoForgeRegistries.ATTACHMENT_TYPES, CreatePhantom.MODID);
 
 	public static final Supplier<AttachmentType<PlayerMiniPhantomClipboardInventory>> MINI_PHANTOM_CLIPBOARD =
-		ATTACHMENT_TYPES.register("mini_phantom_clipboard",
-			() -> AttachmentType.serializable(PlayerMiniPhantomClipboardInventory::new)
-				.copyOnDeath()
-				.build());
+		ATTACHMENT_TYPES
+			.register("mini_phantom_clipboard",
+				() -> AttachmentType.serializable(PlayerMiniPhantomClipboardInventory::new)
+					.copyOnDeath()
+					.build());
 
 	private AllAttachmentTypes() {
 	}

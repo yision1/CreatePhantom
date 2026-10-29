@@ -56,9 +56,8 @@ public final class PhantomPortTargetRegistry {
 		return entries.entrySet()
 			.stream()
 			.filter(entry -> PhantomAddressRules.matches(normalized, entry.getValue().address))
-			.sorted(Comparator
-				.<Map.Entry<BlockPos, Entry>>comparingInt(
-					entry -> exactMatch(normalized, entry.getValue().address) ? 0 : 1)
+			.sorted(Comparator.<Map.Entry<BlockPos, Entry>>comparingInt(
+				entry -> exactMatch(normalized, entry.getValue().address) ? 0 : 1)
 				.thenComparingDouble(entry -> distanceTo(level, origin, entry.getKey()))
 				.thenComparing(entry -> entry.getValue().address))
 			.map(Map.Entry::getKey)
@@ -98,7 +97,8 @@ public final class PhantomPortTargetRegistry {
 				.<TargetLocation>comparingInt(target -> target.dimension().equals(level.dimension()) ? 0 : 1)
 				.thenComparingInt(target -> exactMatch(normalized, target.address()) ? 0 : 1)
 				.thenComparingDouble(target -> target.dimension().equals(level.dimension())
-					? distanceTo(level, origin, target.pos()) : 0)
+					? distanceTo(level, origin, target.pos())
+					: 0)
 				.thenComparing(target -> target.dimension().location().toString())
 				.thenComparing(TargetLocation::address))
 			.filter(predicate)

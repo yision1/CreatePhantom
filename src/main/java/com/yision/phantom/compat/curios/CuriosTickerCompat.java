@@ -6,7 +6,6 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 
 public final class CuriosTickerCompat {
-
 	private CuriosTickerCompat() {
 	}
 

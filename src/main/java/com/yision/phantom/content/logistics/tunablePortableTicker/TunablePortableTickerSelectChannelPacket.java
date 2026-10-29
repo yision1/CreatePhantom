@@ -12,10 +12,11 @@ import net.minecraft.server.level.ServerPlayer;
 public record TunablePortableTickerSelectChannelPacket(TunablePortableTickerLocator locator, int channel)
 	implements ServerboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerSelectChannelPacket> STREAM_CODEC =
-		StreamCodec.composite(
-			TunablePortableTickerLocator.STREAM_CODEC, TunablePortableTickerSelectChannelPacket::locator,
-			ByteBufCodecs.VAR_INT, TunablePortableTickerSelectChannelPacket::channel,
-			TunablePortableTickerSelectChannelPacket::new);
+		StreamCodec
+			.composite(
+				TunablePortableTickerLocator.STREAM_CODEC, TunablePortableTickerSelectChannelPacket::locator,
+				ByteBufCodecs.VAR_INT, TunablePortableTickerSelectChannelPacket::channel,
+				TunablePortableTickerSelectChannelPacket::new);
 
 	@Override
 	public void handle(ServerPlayer player) {

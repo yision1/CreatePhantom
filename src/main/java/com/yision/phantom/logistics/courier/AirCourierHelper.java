@@ -74,8 +74,8 @@ public final class AirCourierHelper {
 	public static boolean isCourierLaunchStack(ItemStack stack) {
 		return stack.is(AllItems.MINI_PHANTOM.get())
 			&& (MiniPhantomItem.hasCargo(stack)
-			|| MiniPhantomItem.getReturnTarget(stack).isPresent()
-			|| MiniPhantomItem.getPlayerReturnTarget(stack).isPresent());
+				|| MiniPhantomItem.getReturnTarget(stack).isPresent()
+				|| MiniPhantomItem.getPlayerReturnTarget(stack).isPresent());
 	}
 
 	public static int getHeadingAngle(Direction movementDirection) {
@@ -172,7 +172,7 @@ public final class AirCourierHelper {
 			candidates.add(trimmed.substring(ltIndex + 1, gtIndex).trim());
 		}
 
-		for (String separator : new String[]{",", ";", "|"}) {
+		for (String separator : new String[] {",", ";", "|"}) {
 			if (trimmed.contains(separator)) {
 				for (String part : trimmed.split(java.util.regex.Pattern.quote(separator))) {
 					String partTrimmed = part.trim();

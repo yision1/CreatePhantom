@@ -29,12 +29,12 @@ public final class AllItems {
 			})
 			.register();
 
-		STORAGE_CHANNEL_EXTENSION_CARD =
-			REGISTRATE.item("storage_channel_extension_card", StorageChannelExtensionCardItem::new)
-				.setData(ProviderType.LANG, NonNullBiConsumer.noop())
-				.model((ctx, prov) -> {
-				})
-				.register();
+		STORAGE_CHANNEL_EXTENSION_CARD = REGISTRATE
+			.item("storage_channel_extension_card", StorageChannelExtensionCardItem::new)
+			.setData(ProviderType.LANG, NonNullBiConsumer.noop())
+			.model((ctx, prov) -> {
+			})
+			.register();
 	}
 
 	private AllItems() {

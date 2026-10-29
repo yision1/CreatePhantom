@@ -25,11 +25,12 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 public final class AirCourierDeliveryService {
-
 	private AirCourierDeliveryService() {
 	}
 
-	public enum TargetState {AVAILABLE, PLAYER_OFFLINE, UNAVAILABLE}
+	public enum TargetState {
+		AVAILABLE, PLAYER_OFFLINE, UNAVAILABLE
+	}
 
 	public static TargetState targetState(MinecraftServer server, AirCourierEntity.Mission mission,
 		@Nullable ResourceKey<Level> dimension, @Nullable BlockPos portPos,
@@ -38,8 +39,10 @@ public final class AirCourierDeliveryService {
 			PhantomPortBlockEntity port = resolveTargetPhantomPort(
 				dimension != null ? server.getLevel(dimension) : null, portPos);
 			return port != null && (mission == AirCourierEntity.Mission.CARRIER_RETURN
-				? port.canReceiveCarrier() : port.canReceiveCourier(box))
-				? TargetState.AVAILABLE : TargetState.UNAVAILABLE;
+				? port.canReceiveCarrier()
+				: port.canReceiveCourier(box))
+					? TargetState.AVAILABLE
+					: TargetState.UNAVAILABLE;
 		}
 		if (playerId == null)
 			return TargetState.UNAVAILABLE;
@@ -60,8 +63,7 @@ public final class AirCourierDeliveryService {
 		@Nullable BlockPos targetPhantomPortPos,
 		@Nullable UUID targetPlayerId,
 		@Nullable UUID hudPlayerId,
-		@Nullable UUID hudEntryId
-	) {
+		@Nullable UUID hudEntryId) {
 		ServerLevel targetLevel = resolveTargetLevel(server, targetDimension, targetPhantomPortPos, targetPlayerId);
 		PhantomPortBlockEntity targetPhantomPort = resolveTargetPhantomPort(targetLevel, targetPhantomPortPos);
 		ServerPlayer targetPlayer = targetPhantomPort == null ? resolvePlayer(server, targetPlayerId) : null;
@@ -118,8 +120,7 @@ public final class AirCourierDeliveryService {
 		ItemStack box,
 		@Nullable UUID targetPlayerId,
 		@Nullable UUID hudPlayerId,
-		@Nullable UUID hudEntryId
-	) {
+		@Nullable UUID hudEntryId) {
 		ServerPlayer targetPlayer = resolvePlayer(server, targetPlayerId);
 		ServerPlayer hudPlayer = resolvePlayer(server, hudPlayerId);
 
@@ -156,8 +157,7 @@ public final class AirCourierDeliveryService {
 		net.minecraft.server.MinecraftServer server,
 		@Nullable ResourceKey<Level> targetDimension,
 		@Nullable BlockPos targetPhantomPortPos,
-		@Nullable UUID targetPlayerId
-	) {
+		@Nullable UUID targetPlayerId) {
 		if (targetPhantomPortPos != null && targetDimension != null) {
 			return server.getLevel(targetDimension);
 		}
@@ -169,16 +169,14 @@ public final class AirCourierDeliveryService {
 	}
 
 	public static @Nullable PhantomPortBlockEntity resolveTargetPhantomPort(
-		@Nullable ServerLevel level, @Nullable BlockPos pos
-	) {
+		@Nullable ServerLevel level, @Nullable BlockPos pos) {
 		if (level == null || pos == null || !level.isPositionEntityTicking(pos))
 			return null;
 		return level.getBlockEntity(pos) instanceof PhantomPortBlockEntity be ? be : null;
 	}
 
 	public static @Nullable ServerPlayer resolvePlayer(
-		net.minecraft.server.MinecraftServer server, @Nullable UUID playerId
-	) {
+		net.minecraft.server.MinecraftServer server, @Nullable UUID playerId) {
 		if (playerId == null)
 			return null;
 		ServerPlayer player = server.getPlayerList().getPlayer(playerId);

@@ -17,7 +17,6 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 
 final class PhantomPortBeltAccess {
-
 	private final PhantomPortBlockEntity port;
 
 	PhantomPortBeltAccess(PhantomPortBlockEntity port) {
@@ -100,7 +99,8 @@ final class PhantomPortBeltAccess {
 		return side;
 	}
 
-	@Nullable IItemHandler launchBeltHandler(Direction side) {
+	@Nullable
+	IItemHandler launchBeltHandler(Direction side) {
 		BlockPos beltPos = beltPos(side);
 		return port.getLevel() != null && port.getLevel().hasChunkAt(beltPos)
 			? port.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, beltPos, Direction.UP)

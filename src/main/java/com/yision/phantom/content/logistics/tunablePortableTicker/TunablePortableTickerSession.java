@@ -31,8 +31,7 @@ public final class TunablePortableTickerSession {
 	}
 
 	public static @Nullable TunablePortableTickerMenu resolve(
-		ServerPlayer player, TunablePortableTickerLocator locator, int channel, UUID sessionNetwork
-	) {
+		ServerPlayer player, TunablePortableTickerLocator locator, int channel, UUID sessionNetwork) {
 		if (player.isSpectator() || AdventureUtil.isAdventure(player)) {
 			return null;
 		}
@@ -57,8 +56,8 @@ public final class TunablePortableTickerSession {
 		if (requestId > 0 && !allowStockRequest(player, menu, requestId, payload.type().id()))
 			return;
 		ItemStack stack = menu.locator.resolve(player);
-		PortableTickerStockData data =
-			PortableTickerStockData.forRequest(player, stack, menu.channel, menu.sessionNetwork, position);
+		PortableTickerStockData data = PortableTickerStockData.forRequest(player, stack, menu.channel,
+			menu.sessionNetwork, position);
 		String previousAddress = data.getAddress();
 		List<Integer> previousHiddenCategories = List.copyOf(data.getHiddenCategories(player.getUUID()));
 		try (var ignored = PortableTickerPacketContext.handling(menu, player, requestId, data, position)) {
@@ -107,7 +106,8 @@ public final class TunablePortableTickerSession {
 		}
 		String trimmed = address.trim();
 		return trimmed.length() <= MAX_ADDRESS_LENGTH
-			? trimmed : trimmed.substring(0, MAX_ADDRESS_LENGTH);
+			? trimmed
+			: trimmed.substring(0, MAX_ADDRESS_LENGTH);
 	}
 
 	public static void clearPlayer(ServerPlayer player) {

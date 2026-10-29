@@ -27,8 +27,8 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
 public class MiniPhantomScreen extends AbstractSimiContainerScreen<MiniPhantomMenu> {
-	private static final ResourceLocation MINI_PHANTOM_GUI =
-		CreatePhantom.asResource("textures/gui/mini_phantom_gui.png");
+	private static final ResourceLocation MINI_PHANTOM_GUI = CreatePhantom
+		.asResource("textures/gui/mini_phantom_gui.png");
 	private static final int TEXTURE_SIZE = 256;
 	private static final int GUI_U = 16;
 	private static final int GUI_V = 16;
@@ -153,8 +153,8 @@ public class MiniPhantomScreen extends AbstractSimiContainerScreen<MiniPhantomMe
 
 		Component title = CreateLang.text(menu.openedStack.getHoverName().getString()).component();
 		graphics.drawString(font, title, x + 117 - font.width(title) / 2, y + 4, 0x3D3C48, false);
-		GuiGameElement.of(new ItemStack(menu.openedStack.getItem()))
-			.<GuiGameElement.GuiRenderBuilder>at(x + 245, y + 80, 0)
+		GuiGameElement
+			.of(new ItemStack(menu.openedStack.getItem())).<GuiGameElement.GuiRenderBuilder>at(x + 245, y + 80, 0)
 			.scale(3)
 			.render(graphics);
 

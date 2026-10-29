@@ -15,32 +15,30 @@ import com.yision.phantom.item.miniphantom.MiniPhantomMenu;
 import com.yision.phantom.item.miniphantom.MiniPhantomScreen;
 
 public final class AllMenuTypes {
-	public static final MenuEntry<PackagePortMenu> PHANTOMPORT =
-		REGISTRATE.menu("phantomport",
-				PhantomPortMenu::new,
-				() -> PhantomPortScreen::new)
-			.register();
+	public static final MenuEntry<PackagePortMenu> PHANTOMPORT = REGISTRATE.menu("phantomport",
+		PhantomPortMenu::new,
+		() -> PhantomPortScreen::new)
+		.register();
 
-	public static final MenuEntry<StockKeeperRequestMenu> TUNABLE_PORTABLE_TICKER =
-		REGISTRATE.<StockKeeperRequestMenu, TunablePortableTickerScreen>menu("tunable_portable_ticker",
-				(menuType, containerId, playerInventory, extraData) ->
-					TunablePortableTickerMenu.createOnClient(containerId, playerInventory, extraData),
-				() -> (menu, inventory, title) -> new TunablePortableTickerScreen((TunablePortableTickerMenu) menu,
-					inventory, title))
-			.register();
+	public static final MenuEntry<StockKeeperRequestMenu> TUNABLE_PORTABLE_TICKER = REGISTRATE
+		.<StockKeeperRequestMenu, TunablePortableTickerScreen>menu("tunable_portable_ticker",
+			(menuType, containerId, playerInventory, extraData) -> TunablePortableTickerMenu.createOnClient(containerId,
+				playerInventory, extraData),
+			() -> (menu, inventory, title) -> new TunablePortableTickerScreen((TunablePortableTickerMenu) menu,
+				inventory, title))
+		.register();
 
-	public static final MenuEntry<TunablePortableTickerCardMenu> TUNABLE_PORTABLE_TICKER_CARDS =
-		REGISTRATE.menu("tunable_portable_ticker_cards",
-				(menuType, containerId, playerInventory, extraData) ->
-					TunablePortableTickerCardMenu.createOnClient(containerId, playerInventory, extraData),
-				() -> TunablePortableTickerCardScreen::new)
-			.register();
+	public static final MenuEntry<TunablePortableTickerCardMenu> TUNABLE_PORTABLE_TICKER_CARDS = REGISTRATE
+		.menu("tunable_portable_ticker_cards",
+			(menuType, containerId, playerInventory, extraData) -> TunablePortableTickerCardMenu
+				.createOnClient(containerId, playerInventory, extraData),
+			() -> TunablePortableTickerCardScreen::new)
+		.register();
 
-	public static final MenuEntry<MiniPhantomMenu> MINI_PHANTOM =
-		REGISTRATE.menu("mini_phantom",
-				MiniPhantomMenu::new,
-				() -> MiniPhantomScreen::new)
-			.register();
+	public static final MenuEntry<MiniPhantomMenu> MINI_PHANTOM = REGISTRATE.menu("mini_phantom",
+		MiniPhantomMenu::new,
+		() -> MiniPhantomScreen::new)
+		.register();
 
 	private AllMenuTypes() {
 	}

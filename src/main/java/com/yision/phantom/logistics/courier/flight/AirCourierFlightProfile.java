@@ -39,8 +39,7 @@ public record AirCourierFlightProfile(
 	double landingMinSpeed,
 	double landingDecelerationRange,
 	double landingMaxDownSpeed,
-	double landingMaxUpSpeed
-) {
+	double landingMaxUpSpeed) {
 	public static final AirCourierFlightProfile DEFAULT = new AirCourierFlightProfile(
 
 		32, 0.28, 9.0, 4.7, 0.75,
@@ -57,6 +56,5 @@ public record AirCourierFlightProfile(
 
 		2.0, 5.0, 3.5, 1.6,
 
-		0.10, 8.0, 0.22, 0.14
-	);
+		0.10, 8.0, 0.22, 0.14);
 }

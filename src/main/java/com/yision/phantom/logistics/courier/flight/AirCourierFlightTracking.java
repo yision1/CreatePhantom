@@ -8,7 +8,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 public final class AirCourierFlightTracking {
-
 	public static final int DELIVERY_LIMIT_TICKS = 200;
 	public static final int FINAL_APPROACH_TICKS = 10;
 	public static final int FINAL_APPROACH_START_TICKS = DELIVERY_LIMIT_TICKS - FINAL_APPROACH_TICKS;
@@ -34,7 +33,8 @@ public final class AirCourierFlightTracking {
 			hasMoved = true;
 		movement = reposition ? Vec3.ZERO : displacement;
 		smoothedMovement = continuous && !reposition
-			? smoothedMovement.lerp(movement, MOVEMENT_SMOOTHING) : Vec3.ZERO;
+			? smoothedMovement.lerp(movement, MOVEMENT_SMOOTHING)
+			: Vec3.ZERO;
 		lastPosition = position;
 		lastDimension = dimension;
 		lastSampleTick = tick;
@@ -79,7 +79,8 @@ public final class AirCourierFlightTracking {
 			return;
 		Vec3 offset = position.subtract(target);
 		finalApproachOffset = offset.lengthSqr() > FINAL_APPROACH_DISTANCE * FINAL_APPROACH_DISTANCE
-			? offset.normalize().scale(FINAL_APPROACH_DISTANCE) : offset;
+			? offset.normalize().scale(FINAL_APPROACH_DISTANCE)
+			: offset;
 	}
 
 	public Vec3 finalApproachPosition(Vec3 target, int elapsedTicks) {

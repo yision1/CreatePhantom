@@ -121,8 +121,8 @@ public class TunablePortableTickerItem extends Item {
 	public static String loadAddress(ItemStack ticker, UUID network) {
 		if (network == null)
 			return "";
-		Map<UUID, String> addresses =
-			ticker.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_ADDRESSES, Map.of());
+		Map<UUID, String> addresses = ticker.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_ADDRESSES,
+			Map.of());
 		return addresses.getOrDefault(network, "");
 	}
 
@@ -159,8 +159,8 @@ public class TunablePortableTickerItem extends Item {
 					StorageChannelExtensionCardItem.loadCategoriesFromStack(other)))
 				return Map.of();
 		}
-		Map<UUID, Map<UUID, List<Integer>>> legacy =
-			ticker.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_HIDDEN_CATEGORIES, Map.of());
+		Map<UUID, Map<UUID, List<Integer>>> legacy = ticker
+			.getOrDefault(AllDataComponents.TUNABLE_PORTABLE_TICKER_HIDDEN_CATEGORIES, Map.of());
 		Map<UUID, List<Integer>> hidden = new HashMap<>();
 		legacy.forEach((player, networks) -> {
 			if (networks.containsKey(network))
@@ -205,8 +205,8 @@ public class TunablePortableTickerItem extends Item {
 		if (cardConfig) {
 			ItemStack openedSnapshot = stack.copy();
 			player.openMenu(new SimpleMenuProvider(
-					(id, inv, p) -> TunablePortableTickerCardMenu.create(id, inv, stack, locator),
-					Component.translatable("gui.createphantom.tunable_portable_ticker.cards")),
+				(id, inv, p) -> TunablePortableTickerCardMenu.create(id, inv, stack, locator),
+				Component.translatable("gui.createphantom.tunable_portable_ticker.cards")),
 				buffer -> {
 					ItemStack.STREAM_CODEC.encode(buffer, openedSnapshot);
 					TunablePortableTickerLocator.STREAM_CODEC.encode(buffer, locator);

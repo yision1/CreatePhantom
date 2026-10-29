@@ -42,8 +42,7 @@ public class PhantomPortBlock extends HorizontalDirectionalBlock implements IWre
 		box(1, 13, 1, 15, 16, 15),
 		box(14, 2, 0, 16, 4, 16),
 		box(0, 2, 0, 2, 4, 16),
-		box(14, 10, 0, 16, 14, 16)
-	);
+		box(14, 10, 0, 16, 14, 16));
 	private static final VoxelShape SHAPE_EAST = rotateY(SHAPE_NORTH);
 	private static final VoxelShape SHAPE_SOUTH = rotateY(SHAPE_EAST);
 	private static final VoxelShape SHAPE_WEST = rotateY(SHAPE_SOUTH);
@@ -118,7 +117,7 @@ public class PhantomPortBlock extends HorizontalDirectionalBlock implements IWre
 	}
 
 	private static VoxelShape rotateY(VoxelShape shape) {
-		VoxelShape[] rotated = new VoxelShape[]{Shapes.empty()};
+		VoxelShape[] rotated = new VoxelShape[] {Shapes.empty()};
 		shape.forAllBoxes((minX, minY, minZ, maxX, maxY, maxZ) -> rotated[0] = Shapes.or(rotated[0],
 			box(16 - maxZ * 16, minY * 16, minX * 16, 16 - minZ * 16, maxY * 16, maxX * 16)));
 		return rotated[0];

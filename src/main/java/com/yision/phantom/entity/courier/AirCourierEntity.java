@@ -45,16 +45,16 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.items.ItemStackHandler;
 
 public class AirCourierEntity extends Entity implements Container {
-	private static final EntityDataAccessor<ItemStack> DATA_PACKAGE =
-		SynchedEntityData.defineId(AirCourierEntity.class, EntityDataSerializers.ITEM_STACK);
-	private static final EntityDataAccessor<Byte> DATA_PHASE =
-		SynchedEntityData.defineId(AirCourierEntity.class, EntityDataSerializers.BYTE);
-	private static final EntityDataAccessor<Vector3f> DATA_LAUNCH_DIRECTION =
-		SynchedEntityData.defineId(AirCourierEntity.class, EntityDataSerializers.VECTOR3);
-	private static final EntityDataAccessor<Byte> DATA_MISSION =
-		SynchedEntityData.defineId(AirCourierEntity.class, EntityDataSerializers.BYTE);
-	private static final EntityDataAccessor<Boolean> DATA_TASK_PROXY =
-		SynchedEntityData.defineId(AirCourierEntity.class, EntityDataSerializers.BOOLEAN);
+	private static final EntityDataAccessor<ItemStack> DATA_PACKAGE = SynchedEntityData.defineId(AirCourierEntity.class,
+		EntityDataSerializers.ITEM_STACK);
+	private static final EntityDataAccessor<Byte> DATA_PHASE = SynchedEntityData.defineId(AirCourierEntity.class,
+		EntityDataSerializers.BYTE);
+	private static final EntityDataAccessor<Vector3f> DATA_LAUNCH_DIRECTION = SynchedEntityData
+		.defineId(AirCourierEntity.class, EntityDataSerializers.VECTOR3);
+	private static final EntityDataAccessor<Byte> DATA_MISSION = SynchedEntityData.defineId(AirCourierEntity.class,
+		EntityDataSerializers.BYTE);
+	private static final EntityDataAccessor<Boolean> DATA_TASK_PROXY = SynchedEntityData
+		.defineId(AirCourierEntity.class, EntityDataSerializers.BOOLEAN);
 
 	private static final AirCourierFlightProfile FLIGHT = AirCourierFlightProfile.DEFAULT;
 	private static final double CLIENT_FAST_CORRECTION_DISTANCE_SQR = 4.0;
@@ -458,9 +458,9 @@ public class AirCourierEntity extends Entity implements Container {
 				return InteractionResult.CONSUME;
 			}
 
-			AirCourierTarget target =
-				AirCourierDispatchService.resolvePackageTarget(serverLevel, getPackage(), position(),
-					null, null);
+			AirCourierTarget target = AirCourierDispatchService.resolvePackageTarget(serverLevel, getPackage(),
+				position(),
+				null, null);
 			if (target == null) {
 				player.displayClientMessage(
 					Component.translatable("gui.createphantom.mini_phantom.invalid_target_phantomport")

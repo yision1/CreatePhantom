@@ -12,8 +12,7 @@ import net.minecraft.network.protocol.Packet;
 @Mixin(Connection.class)
 public abstract class ConnectionMixin {
 	@ModifyVariable(method = "send(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketSendListener;" +
-		"Z)V",
-		at = @At("HEAD"), argsOnly = true)
+		"Z)V", at = @At("HEAD"), argsOnly = true)
 	private Packet<?> createphantom$portablePacket(Packet<?> packet) {
 		return PortableTickerPacketContext.wrap((Connection) (Object) this, packet);
 	}

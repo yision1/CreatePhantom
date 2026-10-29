@@ -8,11 +8,12 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
 
 public record MiniPhantomCargo(ItemStack packageStack) {
-	public static final Codec<MiniPhantomCargo> CODEC =
-		ItemStack.OPTIONAL_CODEC.xmap(MiniPhantomCargo::new, MiniPhantomCargo::packageCopy);
+	public static final Codec<MiniPhantomCargo> CODEC = ItemStack.OPTIONAL_CODEC.xmap(MiniPhantomCargo::new,
+		MiniPhantomCargo::packageCopy);
 
 	public static final StreamCodec<RegistryFriendlyByteBuf, MiniPhantomCargo> STREAM_CODEC =
-		ItemStack.OPTIONAL_STREAM_CODEC.map(MiniPhantomCargo::new, MiniPhantomCargo::packageCopy);
+		ItemStack.OPTIONAL_STREAM_CODEC
+			.map(MiniPhantomCargo::new, MiniPhantomCargo::packageCopy);
 
 	public MiniPhantomCargo {
 		packageStack = sanitize(packageStack);

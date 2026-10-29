@@ -17,7 +17,6 @@ import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
 
 final class PhantomPortInventory {
-
 	private final PhantomPortBlockEntity port;
 	final ItemStackHandler carrierInventory;
 	final IItemHandler combinedHandler;

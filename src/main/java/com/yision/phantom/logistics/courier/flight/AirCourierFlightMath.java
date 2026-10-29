@@ -7,7 +7,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public final class AirCourierFlightMath {
-
 	private AirCourierFlightMath() {
 	}
 
@@ -95,7 +94,8 @@ public final class AirCourierFlightMath {
 		Vec3 segment = position.subtract(start);
 		double lengthSqr = segment.lengthSqr();
 		double t = lengthSqr > 1.0E-6
-			? Mth.clamp(deliveryTarget.subtract(start).dot(segment) / lengthSqr, 0.0, 1.0) : 0;
+			? Mth.clamp(deliveryTarget.subtract(start).dot(segment) / lengthSqr, 0.0, 1.0)
+			: 0;
 		return start.add(segment.scale(t)).distanceToSqr(deliveryTarget) <= completionDistanceSqr;
 	}
 }

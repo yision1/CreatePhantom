@@ -15,16 +15,17 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 public record TunablePortableTickerNetworkStatePacket(TunablePortableTickerLocator locator, int channel,
-													  UUID sessionNetwork, boolean isAdmin, boolean isLocked) implements
+	UUID sessionNetwork, boolean isAdmin, boolean isLocked) implements
 	ClientboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerNetworkStatePacket> STREAM_CODEC =
-		StreamCodec.composite(
-			TunablePortableTickerLocator.STREAM_CODEC, TunablePortableTickerNetworkStatePacket::locator,
-			ByteBufCodecs.VAR_INT, TunablePortableTickerNetworkStatePacket::channel,
-			UUIDUtil.STREAM_CODEC, TunablePortableTickerNetworkStatePacket::sessionNetwork,
-			ByteBufCodecs.BOOL, TunablePortableTickerNetworkStatePacket::isAdmin,
-			ByteBufCodecs.BOOL, TunablePortableTickerNetworkStatePacket::isLocked,
-			TunablePortableTickerNetworkStatePacket::new);
+		StreamCodec
+			.composite(
+				TunablePortableTickerLocator.STREAM_CODEC, TunablePortableTickerNetworkStatePacket::locator,
+				ByteBufCodecs.VAR_INT, TunablePortableTickerNetworkStatePacket::channel,
+				UUIDUtil.STREAM_CODEC, TunablePortableTickerNetworkStatePacket::sessionNetwork,
+				ByteBufCodecs.BOOL, TunablePortableTickerNetworkStatePacket::isAdmin,
+				ByteBufCodecs.BOOL, TunablePortableTickerNetworkStatePacket::isLocked,
+				TunablePortableTickerNetworkStatePacket::new);
 
 	@Override
 	@OnlyIn(Dist.CLIENT)

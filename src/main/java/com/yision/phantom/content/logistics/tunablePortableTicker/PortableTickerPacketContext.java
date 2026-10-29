@@ -20,7 +20,9 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.level.Level;
 
 public final class PortableTickerPacketContext implements AutoCloseable {
-	private enum Phase {SEND, SERVER, RECEIVE}
+	private enum Phase {
+		SEND, SERVER, RECEIVE
+	}
 
 	private static final ThreadLocal<PortableTickerPacketContext> ACTIVE = new ThreadLocal<>();
 

@@ -1,6 +1,4 @@
 {
-	"format_version": "1.9.0",
-	"credit": "Made with Blockbench",
 	"parent": "createphantom:item/mini_phantom",
 	"textures": {
 		"package": "createphantom:item/mini_package"

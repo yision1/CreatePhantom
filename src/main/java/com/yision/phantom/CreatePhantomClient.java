@@ -60,14 +60,12 @@ public class CreatePhantomClient {
 			ItemProperties.register(
 				AllItems.STORAGE_CHANNEL_EXTENSION_CARD.get(),
 				ResourceLocation.fromNamespaceAndPath(CreatePhantom.MODID, "linked"),
-				(stack, level, entity, seed) -> StorageChannelExtensionCardItem.isLinked(stack) ? 1.0F : 0.0F
-			);
+				(stack, level, entity, seed) -> StorageChannelExtensionCardItem.isLinked(stack) ? 1.0F : 0.0F);
 			ItemProperties.register(
 				AllItems.TUNABLE_PORTABLE_TICKER.get(),
 				ResourceLocation.fromNamespaceAndPath(CreatePhantom.MODID, "open"),
-				(stack, level, entity, seed) ->
-					Minecraft.getInstance().screen instanceof TunablePortableTickerScreen ? 1.0F : 0.0F
-			);
+				(stack, level, entity,
+					seed) -> Minecraft.getInstance().screen instanceof TunablePortableTickerScreen ? 1.0F : 0.0F);
 		});
 		CreatePhantom.LOGGER.debug("Initialized client hooks for {}", CreatePhantom.NAME);
 	}

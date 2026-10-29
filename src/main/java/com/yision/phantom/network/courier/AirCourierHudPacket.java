@@ -26,7 +26,8 @@ import net.neoforged.api.distmarker.OnlyIn;
 
 public record AirCourierHudPacket(List<EntryUpdate> updates) implements ClientboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, AirCourierHudPacket> STREAM_CODEC =
-		EntryUpdate.STREAM_CODEC.apply(ByteBufCodecs.list(AirCourierHudPayload.MAX_VISIBLE_ENTRIES))
+		EntryUpdate.STREAM_CODEC
+			.apply(ByteBufCodecs.list(AirCourierHudPayload.MAX_VISIBLE_ENTRIES))
 			.map(AirCourierHudPacket::new, AirCourierHudPacket::updates);
 
 	public AirCourierHudPacket {
@@ -41,7 +42,8 @@ public record AirCourierHudPacket(List<EntryUpdate> updates) implements Clientbo
 		for (AirCourierHudEntry entry : payload.entries()) {
 			AirCourierHudEntry old = previousEntries.get(entry.id());
 			Optional<List<ItemStack>> contents = old != null && entry.hasSameContents(old)
-				? Optional.empty() : Optional.of(entry.displayStacks());
+				? Optional.empty()
+				: Optional.of(entry.displayStacks());
 			updates.add(new EntryUpdate(entry.id(), entry.status(), entry.etaSeconds(), contents));
 		}
 		return new AirCourierHudPacket(updates);
@@ -61,7 +63,8 @@ public record AirCourierHudPacket(List<EntryUpdate> updates) implements Clientbo
 			if (update.contents().isEmpty() && old == null)
 				continue;
 			List<ItemStack> contents = update.contents().isPresent()
-				? update.contents().orElseThrow() : old.displayStacks();
+				? update.contents().orElseThrow()
+				: old.displayStacks();
 			entries.add(new AirCourierHudEntry(update.id(), update.status(), update.etaSeconds(), contents));
 		}
 		return new AirCourierHudPayload(entries);
@@ -79,13 +82,14 @@ public record AirCourierHudPacket(List<EntryUpdate> updates) implements Clientbo
 	}
 
 	public record EntryUpdate(UUID id, AirCourierHudStatus status, int etaSeconds,
-							  Optional<List<ItemStack>> contents) {
+		Optional<List<ItemStack>> contents) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, EntryUpdate> STREAM_CODEC = StreamCodec.composite(
 			UUIDUtil.STREAM_CODEC, EntryUpdate::id,
 			ByteBufCodecs.VAR_INT, update -> update.status().ordinal(),
 			ByteBufCodecs.VAR_INT, EntryUpdate::etaSeconds,
 			ByteBufCodecs.optional(ItemStack.OPTIONAL_STREAM_CODEC.apply(
-				ByteBufCodecs.list(AirCourierPackagePreview.MAX_DISPLAY_STACKS))), EntryUpdate::contents,
+				ByteBufCodecs.list(AirCourierPackagePreview.MAX_DISPLAY_STACKS))),
+			EntryUpdate::contents,
 			(id, status, eta, contents) -> new EntryUpdate(id, AirCourierHudStatus.byId(status), eta, contents));
 
 		public EntryUpdate {

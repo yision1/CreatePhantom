@@ -25,7 +25,6 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.items.IItemHandler;
 
 final class PhantomPortDispatchAccess {
-
 	private final PhantomPortBlockEntity port;
 	private final PhantomPortInventory inventory;
 	private final PhantomPortBeltAccess beltAccess;
@@ -47,7 +46,8 @@ final class PhantomPortDispatchAccess {
 		}
 	}
 
-	@Nullable IItemHandler getItemHandler(@Nullable Direction side) {
+	@Nullable
+	IItemHandler getItemHandler(@Nullable Direction side) {
 		if (side != null && side.getAxis().isHorizontal()) {
 			if (side == beltAccess.specialSide()) {
 				return beltAccess.hasManualDispatchFunnel(side) ? launchFunnelHandlers.get(side) : null;
@@ -111,7 +111,8 @@ final class PhantomPortDispatchAccess {
 					}
 					if (candidate.target() instanceof AirCourierTarget.PlayerTarget playerTarget) {
 						ServerPlayer player = port.getLevel() instanceof ServerLevel sl
-							? sl.getServer().getPlayerList().getPlayer(playerTarget.playerId()) : null;
+							? sl.getServer().getPlayerList().getPlayer(playerTarget.playerId())
+							: null;
 						if (player != null) {
 							UUID hudEntryId = candidate.hudEntryId();
 							if (hudEntryId != null) {
@@ -275,6 +276,6 @@ final class PhantomPortDispatchAccess {
 	}
 
 	private record DispatchCandidate(int packageSlot, ItemStack phantomStack,
-									 @Nullable AirCourierTarget target, @Nullable UUID hudEntryId) {
+		@Nullable AirCourierTarget target, @Nullable UUID hudEntryId) {
 	}
 }

@@ -16,7 +16,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
 public class AddressSuggestionEditBox extends EditBox {
-
 	private DestinationSuggestions destinationSuggestions;
 	private Consumer<String> mainResponder;
 	private String prevValue = "=)";

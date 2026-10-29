@@ -15,7 +15,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 
 public class AirCourierTaskSavedData extends SavedData {
-
 	private static final String DATA_NAME = "createphantom_courier_tasks";
 
 	private final List<AirCourierTask> tasks = new ArrayList<>();
@@ -75,9 +74,7 @@ public class AirCourierTaskSavedData extends SavedData {
 				new SavedData.Factory<AirCourierTaskSavedData>(
 					AirCourierTaskSavedData::new,
 					AirCourierTaskSavedData::load,
-					null
-				),
-				DATA_NAME
-			);
+					null),
+				DATA_NAME);
 	}
 }

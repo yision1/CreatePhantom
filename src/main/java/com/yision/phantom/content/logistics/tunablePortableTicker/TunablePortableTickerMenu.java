@@ -158,7 +158,7 @@ public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 	}
 
 	private record MenuData(TunablePortableTickerLocator locator, int channel, BlockPos queryPosition, UUID sessionId,
-							ItemStack stack, boolean admin, boolean locked) {
+		ItemStack stack, boolean admin, boolean locked) {
 	}
 
 	@Override
@@ -170,7 +170,7 @@ public class TunablePortableTickerMenu extends StockKeeperRequestMenu {
 
 	private void refreshNetworkState(Player player) {
 		setNetworkState(sessionNetwork != null && Create.LOGISTICS.isLockable(sessionNetwork)
-				&& Create.LOGISTICS.mayAdministrate(sessionNetwork, player),
+			&& Create.LOGISTICS.mayAdministrate(sessionNetwork, player),
 			sessionNetwork != null && Create.LOGISTICS.isLocked(sessionNetwork));
 	}
 

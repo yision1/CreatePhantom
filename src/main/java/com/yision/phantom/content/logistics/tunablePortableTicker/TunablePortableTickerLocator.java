@@ -19,8 +19,8 @@ public record TunablePortableTickerLocator(Source source, int slot) {
 
 	public static final TunablePortableTickerLocator EMPTY = new TunablePortableTickerLocator(Source.INVENTORY, -1);
 
-	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerLocator> STREAM_CODEC =
-		StreamCodec.of(TunablePortableTickerLocator::write, TunablePortableTickerLocator::read);
+	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerLocator> STREAM_CODEC = StreamCodec
+		.of(TunablePortableTickerLocator::write, TunablePortableTickerLocator::read);
 
 	public static TunablePortableTickerLocator fromHand(InteractionHand hand) {
 		return hand == InteractionHand.OFF_HAND

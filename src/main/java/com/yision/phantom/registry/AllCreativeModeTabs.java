@@ -11,8 +11,8 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class AllCreativeModeTabs {
-	private static final DeferredRegister<CreativeModeTab> REGISTER =
-		DeferredRegister.create(Registries.CREATIVE_MODE_TAB, CreatePhantom.MODID);
+	private static final DeferredRegister<CreativeModeTab> REGISTER = DeferredRegister
+		.create(Registries.CREATIVE_MODE_TAB, CreatePhantom.MODID);
 
 	public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MAIN = REGISTER.register("createphantom",
 		() -> CreativeModeTab.builder()

@@ -31,7 +31,6 @@ import net.neoforged.neoforge.items.ItemHandlerHelper;
 import net.neoforged.neoforge.items.ItemStackHandler;
 
 public class PhantomPortBlockEntity extends PackagePortBlockEntity {
-
 	private final PhantomPortInventory portInventory;
 	private final PhantomPortBeltAccess beltAccess;
 	private final PhantomPortDispatchAccess dispatchAccess;

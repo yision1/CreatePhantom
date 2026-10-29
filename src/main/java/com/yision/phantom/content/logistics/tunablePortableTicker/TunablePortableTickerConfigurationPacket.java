@@ -17,15 +17,16 @@ public record TunablePortableTickerConfigurationPacket(TunablePortableTickerLoca
 	UUID sessionNetwork, UUID sessionId, int requestId, CustomPacketPayload payload)
 	implements ServerboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerConfigurationPacket> STREAM_CODEC =
-		StreamCodec.composite(TunablePortableTickerLocator.STREAM_CODEC,
-			TunablePortableTickerConfigurationPacket::locator,
-			ByteBufCodecs.VAR_INT, TunablePortableTickerConfigurationPacket::channel,
-			UUIDUtil.STREAM_CODEC, TunablePortableTickerConfigurationPacket::sessionNetwork,
-			UUIDUtil.STREAM_CODEC, TunablePortableTickerConfigurationPacket::sessionId,
-			ByteBufCodecs.VAR_INT, TunablePortableTickerConfigurationPacket::requestId,
-			NativeTickerPayloadCodec.forFlow(PacketFlow.SERVERBOUND),
-			TunablePortableTickerConfigurationPacket::payload,
-			TunablePortableTickerConfigurationPacket::new);
+		StreamCodec
+			.composite(TunablePortableTickerLocator.STREAM_CODEC,
+				TunablePortableTickerConfigurationPacket::locator,
+				ByteBufCodecs.VAR_INT, TunablePortableTickerConfigurationPacket::channel,
+				UUIDUtil.STREAM_CODEC, TunablePortableTickerConfigurationPacket::sessionNetwork,
+				UUIDUtil.STREAM_CODEC, TunablePortableTickerConfigurationPacket::sessionId,
+				ByteBufCodecs.VAR_INT, TunablePortableTickerConfigurationPacket::requestId,
+				NativeTickerPayloadCodec.forFlow(PacketFlow.SERVERBOUND),
+				TunablePortableTickerConfigurationPacket::payload,
+				TunablePortableTickerConfigurationPacket::new);
 
 	@Override
 	public void handle(ServerPlayer player) {

@@ -54,8 +54,7 @@ public final class AirCourierHudOverlay {
 		Component statusText,
 		Component addressText,
 		int statusWidth,
-		int addressWidth
-	) {
+		int addressWidth) {
 	}
 
 	private AirCourierHudOverlay() {

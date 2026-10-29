@@ -13,7 +13,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 public final class NativeTickerPayloadCodec {
-
 	private NativeTickerPayloadCodec() {
 	}
 

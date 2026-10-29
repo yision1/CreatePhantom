@@ -94,11 +94,12 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 		editorEditBox.setMaxLength(28);
 
 		editingIndex = index;
-		editingItem = index == -1 ? ItemStack.EMPTY : cards.get(index)
-			.copy();
+		editingItem = index == -1 ? ItemStack.EMPTY
+			: cards.get(index)
+				.copy();
 		editorEditBox.setValue(editingItem.has(DataComponents.CUSTOM_NAME)
 			? editingItem.getHoverName()
-			.getString()
+				.getString()
 			: "");
 
 		menu.proxyInventory.setStackInSlot(0, editingItem.copy());
@@ -406,8 +407,9 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 	protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
 		super.renderForeground(graphics, mouseX, mouseY, partialTicks);
 
-		GuiGameElement.of(menu.openedStack)
-			.<GuiGameElement.GuiRenderBuilder>at(leftPos + AllGuiTextures.STOCK_KEEPER_CATEGORY.getWidth() + 12,
+		GuiGameElement
+			.of(menu.openedStack).<GuiGameElement.GuiRenderBuilder>at(
+				leftPos + AllGuiTextures.STOCK_KEEPER_CATEGORY.getWidth() + 12,
 				topPos + imageHeight - 39, -190)
 			.scale(3)
 			.render(graphics);
@@ -423,11 +425,12 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 			.isEmpty() && isMouseIn(mouseX, mouseY, leftPos + 16, topPos + 24, 16, 16)) {
 			graphics.renderComponentTooltip(font, List.of(
 				Component.translatable(editingIndex == -1
-						? "gui.createphantom.tunable_portable_ticker.new_card"
-						: "gui.createphantom.tunable_portable_ticker.card_slot")
+					? "gui.createphantom.tunable_portable_ticker.new_card"
+					: "gui.createphantom.tunable_portable_ticker.card_slot")
 					.withStyle(style -> style.withColor(ScrollInput.HEADER_RGB.getRGB())),
 				Component.translatable("gui.createphantom.tunable_portable_ticker.card_slot_tip")
-					.withStyle(ChatFormatting.GRAY)), mouseX, mouseY);
+					.withStyle(ChatFormatting.GRAY)),
+				mouseX, mouseY);
 			return;
 		}
 
@@ -476,9 +479,9 @@ public class TunablePortableTickerCardScreen extends AbstractSimiContainerScreen
 
 		renderPlayerInventory(graphics, leftPos + 10, topPos + 88);
 
-		FormattedCharSequence editorTitle =
-			Component.translatable("gui.createphantom.tunable_portable_ticker.card_editor")
-				.getVisualOrderText();
+		FormattedCharSequence editorTitle = Component
+			.translatable("gui.createphantom.tunable_portable_ticker.card_editor")
+			.getVisualOrderText();
 		graphics.drawString(font, editorTitle, center - font.width(editorTitle) / 2, topPos - 1, 0x3D3C48, false);
 	}
 

@@ -11,11 +11,12 @@ import net.minecraft.server.level.ServerPlayer;
 public record TunablePortableTickerCardSlotPacket(int cardIndex, boolean begin, String name)
 	implements ServerboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerCardSlotPacket> STREAM_CODEC =
-		StreamCodec.composite(
-			ByteBufCodecs.INT, TunablePortableTickerCardSlotPacket::cardIndex,
-			ByteBufCodecs.BOOL, TunablePortableTickerCardSlotPacket::begin,
-			ByteBufCodecs.stringUtf8(28), TunablePortableTickerCardSlotPacket::name,
-			TunablePortableTickerCardSlotPacket::new);
+		StreamCodec
+			.composite(
+				ByteBufCodecs.INT, TunablePortableTickerCardSlotPacket::cardIndex,
+				ByteBufCodecs.BOOL, TunablePortableTickerCardSlotPacket::begin,
+				ByteBufCodecs.stringUtf8(28), TunablePortableTickerCardSlotPacket::name,
+				TunablePortableTickerCardSlotPacket::new);
 
 	@Override
 	public void handle(ServerPlayer player) {

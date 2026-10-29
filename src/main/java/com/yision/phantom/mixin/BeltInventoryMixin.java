@@ -20,8 +20,8 @@ public abstract class BeltInventoryMixin {
 	@Final
 	private BeltBlockEntity belt;
 
-	@Inject(method = "addItem(Lcom/simibubi/create/content/kinetics/belt/transport/TransportedItemStack;)V", at = @At(
-		"HEAD"))
+	@Inject(method = "addItem(Lcom/simibubi/create/content/kinetics/belt/transport/TransportedItemStack;)V",
+		at = @At("HEAD"))
 	private void createphantom$alignCourierLaunchStack(TransportedItemStack stack, CallbackInfo ci) {
 		AirCourierBeltHooks.alignCourierLaunchStack(belt, stack);
 	}

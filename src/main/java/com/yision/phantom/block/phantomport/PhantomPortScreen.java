@@ -29,8 +29,8 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
 public class PhantomPortScreen extends AbstractSimiContainerScreen<PackagePortMenu> {
-	private static final ResourceLocation PHANTOM_PORT_GUI =
-		CreatePhantom.asResource("textures/gui/phantomport_gui.png");
+	private static final ResourceLocation PHANTOM_PORT_GUI = CreatePhantom
+		.asResource("textures/gui/phantomport_gui.png");
 	private static final int TEXTURE_SIZE = 256;
 	private static final int WINDOW_WIDTH = 220;
 	private static final int WINDOW_HEIGHT = 82;
@@ -89,8 +89,7 @@ public class PhantomPortScreen extends AbstractSimiContainerScreen<PackagePortMe
 		addressBox.setX(nameBoxX(addressBox.getValue(), addressBox));
 		addRenderableWidget(addressBox);
 
-		confirmButton =
-			new IconButton(x + WINDOW_WIDTH - 33, y + WINDOW_HEIGHT - 24, AllIcons.I_CONFIRM);
+		confirmButton = new IconButton(x + WINDOW_WIDTH - 33, y + WINDOW_HEIGHT - 24, AllIcons.I_CONFIRM);
 		confirmButton.withCallback(() -> minecraft.player.closeContainer());
 		addRenderableWidget(confirmButton);
 
@@ -149,7 +148,7 @@ public class PhantomPortScreen extends AbstractSimiContainerScreen<PackagePortMe
 		}
 
 		GuiGameElement.of(icon).<GuiGameElement.GuiRenderBuilder>at(x + WINDOW_WIDTH + 6,
-				y + WINDOW_HEIGHT - 56, -200)
+			y + WINDOW_HEIGHT - 56, -200)
 			.scale(4)
 			.render(graphics);
 
@@ -166,14 +165,14 @@ public class PhantomPortScreen extends AbstractSimiContainerScreen<PackagePortMe
 
 		if (addressBox.isHovered()) {
 			graphics.renderComponentTooltip(font, List.of(CreateLang.translate("gui.package_port.catch_packages")
-						.color(AbstractSimiWidget.HEADER_RGB)
-						.component(),
-					CreateLang.translate("gui.package_port.catch_packages_empty")
-						.style(ChatFormatting.GRAY)
-						.component(),
-					CreateLang.translate("gui.package_port.catch_packages_wildcard")
-						.style(ChatFormatting.GRAY)
-						.component()),
+				.color(AbstractSimiWidget.HEADER_RGB)
+				.component(),
+				CreateLang.translate("gui.package_port.catch_packages_empty")
+					.style(ChatFormatting.GRAY)
+					.component(),
+				CreateLang.translate("gui.package_port.catch_packages_wildcard")
+					.style(ChatFormatting.GRAY)
+					.component()),
 				mouseX, mouseY);
 		}
 	}

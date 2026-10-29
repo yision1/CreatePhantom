@@ -50,10 +50,10 @@ public class StorageChannelExtensionCardClientHandler {
 		}
 
 		BlockPos playerPos = player.blockPosition();
-		for (int x = SectionPos.blockToSectionCoord(playerPos.getX() - 64);
-			 x <= SectionPos.blockToSectionCoord(playerPos.getX() + 64); x++) {
-			for (int z = SectionPos.blockToSectionCoord(playerPos.getZ() - 64);
-				 z <= SectionPos.blockToSectionCoord(playerPos.getZ() + 64); z++) {
+		for (int x = SectionPos.blockToSectionCoord(playerPos.getX() - 64); x <= SectionPos
+			.blockToSectionCoord(playerPos.getX() + 64); x++) {
+			for (int z = SectionPos.blockToSectionCoord(playerPos.getZ() - 64); z <= SectionPos
+				.blockToSectionCoord(playerPos.getZ() + 64); z++) {
 				LevelChunk chunk = mc.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false);
 				if (chunk == null)
 					continue;

@@ -52,8 +52,8 @@ public class StorageChannelExtensionCardItem extends Item {
 
 	@Nullable
 	public static UUID networkFromStack(ItemStack stack) {
-		CompoundTag tag =
-			stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY).copyTag();
+		CompoundTag tag = stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY)
+			.copyTag();
 		if (!tag.hasUUID("Freq"))
 			return null;
 		return tag.getUUID("Freq");
@@ -71,8 +71,8 @@ public class StorageChannelExtensionCardItem extends Item {
 				addresses.size()).withStyle(FontHelper.Palette.STANDARD_CREATE.highlight()));
 		}
 
-		CompoundTag tag =
-			stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY).copyTag();
+		CompoundTag tag = stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY)
+			.copyTag();
 		if (!tag.hasUUID("Freq"))
 			return;
 
@@ -126,21 +126,20 @@ public class StorageChannelExtensionCardItem extends Item {
 	public static void assignFrequency(ItemStack stack, Player player, UUID frequency) {
 		if (!frequency.equals(networkFromStack(stack)))
 			stack.set(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_HIDDEN_CATEGORIES, Map.of());
-		CompoundTag tag =
-			stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY).copyTag();
+		CompoundTag tag = stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.EMPTY)
+			.copyTag();
 		tag.putUUID("Freq", frequency);
 		player.displayClientMessage(CreateLang.translateDirect("logistically_linked.tuned"), true);
 		stack.set(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_FREQ, CustomData.of(tag));
 	}
 
 	private static void saveCategoriesIfAvailable(
-		ItemStack stack, Level level, BlockPos pos, UUID oldNetwork, UUID newNetwork
-	) {
+		ItemStack stack, Level level, BlockPos pos, UUID oldNetwork, UUID newNetwork) {
 		if (level.getBlockEntity(pos) instanceof StockTickerBlockEntity stbe) {
 			CompoundTag tag = new CompoundTag();
 			stbe.saveAdditional(tag, level.registryAccess());
-			List<ItemStack> categories =
-				NBTHelper.readItemList(tag.getList("Categories", Tag.TAG_COMPOUND), level.registryAccess());
+			List<ItemStack> categories = NBTHelper.readItemList(tag.getList("Categories", Tag.TAG_COMPOUND),
+				level.registryAccess());
 			saveCategoriesToStack(stack, categories);
 			return;
 		}
@@ -168,9 +167,8 @@ public class StorageChannelExtensionCardItem extends Item {
 	}
 
 	public static List<ItemStack> loadCategoriesFromStack(ItemStack stack) {
-		List<ItemStack> readCategories =
-			new java.util.ArrayList<>(
-				stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_CATEGORIES, List.of()));
+		List<ItemStack> readCategories = new java.util.ArrayList<>(
+			stack.getOrDefault(AllDataComponents.STORAGE_CHANNEL_EXTENSION_CARD_CATEGORIES, List.of()));
 		readCategories.removeIf(itemStack -> !itemStack.isEmpty() && !(itemStack.getItem() instanceof FilterItem));
 		return readCategories;
 	}

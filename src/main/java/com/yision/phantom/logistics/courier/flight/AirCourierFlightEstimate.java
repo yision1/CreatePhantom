@@ -4,7 +4,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
 public final class AirCourierFlightEstimate {
-
 	private AirCourierFlightEstimate() {
 	}
 
@@ -14,7 +13,7 @@ public final class AirCourierFlightEstimate {
 		Vec3 approachGate = AirCourierFlightTargets.approachGate(profile, from, initialMotion, landingTarget, false);
 		boolean alreadyLanding = from.distanceTo(approachGate) < profile.approachGateNearDistance()
 			|| (AirCourierFlightMath.horizontalDistance(from, landingTarget) < profile.approachGateHorizontalThreshold()
-			&& from.y > landingTarget.y);
+				&& from.y > landingTarget.y);
 		if (alreadyLanding) {
 			return landingTicks(profile, from, landingTarget, completionDistance);
 		}

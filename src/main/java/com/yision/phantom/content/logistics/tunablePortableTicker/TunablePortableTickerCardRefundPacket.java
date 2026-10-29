@@ -10,9 +10,10 @@ import net.minecraft.server.level.ServerPlayer;
 
 public record TunablePortableTickerCardRefundPacket(int cardIndex) implements ServerboundPacketPayload {
 	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerCardRefundPacket> STREAM_CODEC =
-		StreamCodec.composite(
-			ByteBufCodecs.INT, TunablePortableTickerCardRefundPacket::cardIndex,
-			TunablePortableTickerCardRefundPacket::new);
+		StreamCodec
+			.composite(
+				ByteBufCodecs.INT, TunablePortableTickerCardRefundPacket::cardIndex,
+				TunablePortableTickerCardRefundPacket::new);
 
 	@Override
 	public void handle(ServerPlayer player) {

@@ -19,14 +19,12 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 public class AddressSuggestionEditBoxHelper {
-
 	public static DestinationSuggestions createSuggestions(
 		Screen screen,
 		EditBox input,
 		boolean anchorToBottom,
 		String localAddress,
-		List<String> cardAddresses
-	) {
+		List<String> cardAddresses) {
 		return createSuggestions(screen, input, anchorToBottom, localAddress, cardAddresses, true);
 	}
 
@@ -36,8 +34,7 @@ public class AddressSuggestionEditBoxHelper {
 		boolean anchorToBottom,
 		String localAddress,
 		List<String> cardAddresses,
-		boolean includeInventoryClipboards
-	) {
+		boolean includeInventoryClipboards) {
 		Minecraft mc = Minecraft.getInstance();
 		Player player = mc.player;
 		List<IntAttached<String>> options = new ArrayList<>();

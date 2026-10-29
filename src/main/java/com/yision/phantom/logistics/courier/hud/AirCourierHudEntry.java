@@ -9,8 +9,7 @@ public record AirCourierHudEntry(
 	UUID id,
 	AirCourierHudStatus status,
 	int etaSeconds,
-	List<ItemStack> displayStacks
-) {
+	List<ItemStack> displayStacks) {
 	public AirCourierHudEntry {
 		displayStacks = List.copyOf(displayStacks);
 	}

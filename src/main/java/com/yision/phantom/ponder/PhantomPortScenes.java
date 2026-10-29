@@ -326,8 +326,8 @@ public final class PhantomPortScenes {
 			.text("-> Li Hua");
 		scene.idle(60);
 
-		ElementLink<BeltItemElement> stagedCourier =
-			scene.world().createItemOnBelt(beltEntryPos, Direction.UP, MiniPhantomItem.createLoaded(addressedPackage));
+		ElementLink<BeltItemElement> stagedCourier = scene.world().createItemOnBelt(beltEntryPos, Direction.UP,
+			MiniPhantomItem.createLoaded(addressedPackage));
 		scene.world().stallBeltItem(stagedCourier, true);
 		scene.overlay().showText(65)
 			.attachKeyFrame()
@@ -458,8 +458,8 @@ public final class PhantomPortScenes {
 		setPortOpen(scene, portPos, false);
 		scene.idle(45);
 
-		ElementLink<BeltItemElement> returningBeltCourier =
-			scene.world().createItemOnBelt(beltEntryPos, Direction.UP, AllItems.MINI_PHANTOM.asStack());
+		ElementLink<BeltItemElement> returningBeltCourier = scene.world().createItemOnBelt(beltEntryPos, Direction.UP,
+			AllItems.MINI_PHANTOM.asStack());
 		orientBeltCourierForTravel(scene, returningBeltCourier, Direction.WEST);
 		scene.world().stallBeltItem(returningBeltCourier, true);
 		scene.overlay().showText(75)
@@ -479,8 +479,7 @@ public final class PhantomPortScenes {
 
 	private static void moveCourierToBeltEnd(CreateSceneBuilder scene, BlockPos beltEntryPos, BlockPos beltEndPos,
 		ItemStack courierStack) {
-		ElementLink<BeltItemElement> courier =
-			scene.world().createItemOnBelt(beltEntryPos, Direction.UP, courierStack);
+		ElementLink<BeltItemElement> courier = scene.world().createItemOnBelt(beltEntryPos, Direction.UP, courierStack);
 		moveCourierToBeltEnd(scene, beltEntryPos, beltEndPos, courier);
 	}
 

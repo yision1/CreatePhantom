@@ -60,28 +60,33 @@ public abstract class StockKeeperRequestScreenMixin implements StockKeeperReques
 	private ItemStack createphantom$portableMode(Player player, Operation<ItemStack> original) {
 		ItemStack held = original.call(player);
 		return (Object) this instanceof TunablePortableTickerScreen && !AllBlocks.CLIPBOARD.isIn(held)
-			? ItemStack.EMPTY : held;
+			? ItemStack.EMPTY
+			: held;
 	}
 
 	@WrapOperation(method = "<init>", at = @At(value = "INVOKE",
-		target =
-			"Lnet/minecraft/world/level/Level;getEntitiesOfClass(Ljava/lang/Class;Lnet/minecraft/world/phys/AABB;" +
-				")Ljava/util/List;"))
+		target = "Lnet/minecraft/world/level/Level;getEntitiesOfClass(Ljava/lang/Class;Lnet/minecraft/world/phys/AABB;"
+			+
+			")Ljava/util/List;"))
 	private <T extends Entity> List<T> createphantom$skipKeeperLookup(Level level, Class<T> type, AABB bounds,
 		Operation<List<T>> original) {
 		return (Object) this instanceof TunablePortableTickerScreen ? List.of() : original.call(level, type, bounds);
 	}
 
-	@WrapOperation(method = "<init>", at = @At(value = "INVOKE",
-		target = "Lnet/minecraft/world/level/Level;getBlockEntity(Lnet/minecraft/core/BlockPos;)" +
-			"Lnet/minecraft/world/level/block/entity/BlockEntity;"))
+	@WrapOperation(method = "<init>",
+		at = @At(value = "INVOKE",
+			target = "Lnet/minecraft/world/level/Level;getBlockEntity(Lnet/minecraft/core/BlockPos;)"
+				+
+				"Lnet/minecraft/world/level/block/entity/BlockEntity;"))
 	private BlockEntity createphantom$skipBlazeLookup(Level level, BlockPos pos, Operation<BlockEntity> original) {
 		return (Object) this instanceof TunablePortableTickerScreen ? null : original.call(level, pos);
 	}
 
-	@WrapOperation(method = "init", at = @At(value = "NEW",
-		target = "(Lnet/minecraft/client/gui/screens/Screen;Lnet/minecraft/client/gui/Font;IIIIZ)" +
-			"Lcom/simibubi/create/content/logistics/AddressEditBox;"))
+	@WrapOperation(method = "init",
+		at = @At(value = "NEW",
+			target = "(Lnet/minecraft/client/gui/screens/Screen;Lnet/minecraft/client/gui/Font;IIIIZ)"
+				+
+				"Lcom/simibubi/create/content/logistics/AddressEditBox;"))
 	private AddressEditBox createphantom$portableAddress(Screen screen, Font font, int x, int y, int width, int height,
 		boolean anchorToBottom, Operation<AddressEditBox> original) {
 		if ((Object) this instanceof TunablePortableTickerScreen portable)
@@ -89,31 +94,35 @@ public abstract class StockKeeperRequestScreenMixin implements StockKeeperReques
 		return original.call(screen, font, x, y, width, height, anchorToBottom);
 	}
 
-	@WrapOperation(method = "containerTick", at = @At(value = "INVOKE",
-		target = "Lnet/minecraft/world/entity/player/Player;closeContainer()V"))
+	@WrapOperation(method = "containerTick",
+		at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;closeContainer()V"))
 	private void createphantom$keepPortableOpen(Player player, Operation<Void> original) {
 		if (!((Object) this instanceof TunablePortableTickerScreen))
 			original.call(player);
 	}
 
-	@ModifyExpressionValue(method = {"renderBg", "renderForeground", "mouseClicked"}, at = @At(value = "FIELD",
-		target = "Lcom/simibubi/create/content/logistics/stockTicker/StockKeeperRequestScreen;isAdmin:Z",
-		opcode = Opcodes.GETFIELD))
+	@ModifyExpressionValue(method = {"renderBg", "renderForeground",
+		"mouseClicked"},
+		at = @At(value = "FIELD",
+			target = "Lcom/simibubi/create/content/logistics/stockTicker/StockKeeperRequestScreen;isAdmin:Z",
+			opcode = Opcodes.GETFIELD))
 	private boolean createphantom$currentAdmin(boolean original) {
 		return (Object) this instanceof TunablePortableTickerScreen portable ? portable.getMenu().isAdmin() : original;
 	}
 
-	@ModifyExpressionValue(method = {"renderBg", "renderForeground", "mouseClicked"}, at = @At(value = "FIELD",
-		target = "Lcom/simibubi/create/content/logistics/stockTicker/StockKeeperRequestScreen;isLocked:Z",
-		opcode = Opcodes.GETFIELD))
+	@ModifyExpressionValue(method = {"renderBg", "renderForeground",
+		"mouseClicked"},
+		at = @At(value = "FIELD",
+			target = "Lcom/simibubi/create/content/logistics/stockTicker/StockKeeperRequestScreen;isLocked:Z",
+			opcode = Opcodes.GETFIELD))
 	private boolean createphantom$currentLock(boolean original) {
-		return (Object) this instanceof TunablePortableTickerScreen portable ? portable.getMenu().isLocked() :
-			original;
+		return (Object) this instanceof TunablePortableTickerScreen portable ? portable.getMenu().isLocked() : original;
 	}
 
-	@WrapOperation(method = "mouseClicked", at = @At(value = "FIELD",
-		target = "Lcom/simibubi/create/content/logistics/stockTicker/StockKeeperRequestScreen;isLocked:Z",
-		opcode = Opcodes.PUTFIELD))
+	@WrapOperation(method = "mouseClicked",
+		at = @At(value = "FIELD",
+			target = "Lcom/simibubi/create/content/logistics/stockTicker/StockKeeperRequestScreen;isLocked:Z",
+			opcode = Opcodes.PUTFIELD))
 	private void createphantom$updatePortableLock(StockKeeperRequestScreen screen, boolean locked,
 		Operation<Void> original) {
 		original.call(screen, locked);
@@ -122,7 +131,8 @@ public abstract class StockKeeperRequestScreenMixin implements StockKeeperReques
 	}
 
 	@WrapOperation(method = "renderBg", at = @At(value = "INVOKE",
-		target = "Lcom/simibubi/create/foundation/utility/CreateLang;translate(Ljava/lang/String;[Ljava/lang/Object;" +
+		target = "Lcom/simibubi/create/foundation/utility/CreateLang;translate(Ljava/lang/String;[Ljava/lang/Object;"
+			+
 			")" +
 			"Lnet/createmod/catnip/lang/LangBuilder;"))
 	private LangBuilder createphantom$portableTitle(String key, Object[] args, Operation<LangBuilder> original) {
@@ -132,12 +142,13 @@ public abstract class StockKeeperRequestScreenMixin implements StockKeeperReques
 		return original.call(key, args);
 	}
 
-	@WrapOperation(method = "getTroubleshootingMessage", at = @At(value = "INVOKE",
-		target = "Ljava/util/List;isEmpty()Z"))
+	@WrapOperation(method = "getTroubleshootingMessage",
+		at = @At(value = "INVOKE", target = "Ljava/util/List;isEmpty()Z"))
 	private boolean createphantom$emptyPortableStock(List<?> stock, Operation<Boolean> original) {
 		boolean empty = original.call(stock);
 		return (Object) this instanceof TunablePortableTickerScreen portable && stock == portable.currentItemSource
-			? portable.getMenu().getStockData().getLastClientsideStockSnapshotAsSummary().isEmpty() : empty;
+			? portable.getMenu().getStockData().getLastClientsideStockSnapshotAsSummary().isEmpty()
+			: empty;
 	}
 
 	@WrapMethod(method = {"sendIt", "removed"})
@@ -148,8 +159,9 @@ public abstract class StockKeeperRequestScreenMixin implements StockKeeperReques
 			original.call();
 	}
 
-	@WrapOperation(method = "mouseClicked", at = @At(value = "INVOKE",
-		target = "Lnet/createmod/catnip/platform/services/NetworkHelper;sendToServer" +
+	@WrapOperation(method = "mouseClicked",
+		at = @At(value = "INVOKE", target = "Lnet/createmod/catnip/platform/services/NetworkHelper;sendToServer"
+			+
 			"(Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload;)V"))
 	private void createphantom$sendPortableLock(NetworkHelper network, CustomPacketPayload payload,
 		Operation<Void> original) {

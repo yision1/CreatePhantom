@@ -21,8 +21,8 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
 public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
-	private static final ResourceLocation CHANNELS =
-		CreatePhantom.asResource("textures/gui/tunable_portable_ticker_channels.png");
+	private static final ResourceLocation CHANNELS = CreatePhantom
+		.asResource("textures/gui/tunable_portable_ticker_channels.png");
 	private static final int CHANNELS_TEXTURE_WIDTH = 128;
 	private static final int CHANNELS_TEXTURE_HEIGHT = 128;
 	private static final int CHANNEL_SEGMENT_X = 15;
@@ -67,8 +67,8 @@ public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
 	public PortableTickerAddressEditBox createAddressBox(Font font, int x, int y, int width, int height,
 		boolean anchorToBottom) {
 		ItemStack card = TunablePortableTickerItem.getCard(getMenu().getTickerStack(), getMenu().getChannel());
-		List<String> addresses =
-			card.isEmpty() ? List.of() : StorageChannelExtensionCardItem.loadAddressesFromStack(card);
+		List<String> addresses = card.isEmpty() ? List.of()
+			: StorageChannelExtensionCardItem.loadAddressesFromStack(card);
 		return new PortableTickerAddressEditBox(this, font, x, y, width, height, anchorToBottom,
 			"@" + getMenu().player.getName().getString(), addresses);
 	}
@@ -181,11 +181,11 @@ public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
 		if (count < 2)
 			return;
 		for (int i = 0; i < count; i++) {
-			int sourceX =
-				visibleChannels.get(i) == getMenu().getChannel() ? CHANNEL_ACTIVE_SEGMENT_X : CHANNEL_SEGMENT_X;
+			int sourceX = visibleChannels.get(i) == getMenu().getChannel() ? CHANNEL_ACTIVE_SEGMENT_X
+				: CHANNEL_SEGMENT_X;
 			int sourceY = i == 0 ? CHANNEL_TOP_Y : i == count - 1 ? CHANNEL_BOTTOM_Y : CHANNEL_MIDDLE_Y;
-			int sourceHeight =
-				i == 0 ? CHANNEL_TOP_HEIGHT : i == count - 1 ? CHANNEL_BOTTOM_HEIGHT : CHANNEL_MIDDLE_HEIGHT;
+			int sourceHeight = i == 0 ? CHANNEL_TOP_HEIGHT
+				: i == count - 1 ? CHANNEL_BOTTOM_HEIGHT : CHANNEL_MIDDLE_HEIGHT;
 			graphics.blit(CHANNELS, channelBarX, channelBarY + getChannelSegmentY(i), sourceX, sourceY,
 				CHANNEL_SEGMENT_WIDTH, sourceHeight, CHANNELS_TEXTURE_WIDTH, CHANNELS_TEXTURE_HEIGHT);
 		}
@@ -218,6 +218,7 @@ public class TunablePortableTickerScreen extends StockKeeperRequestScreen {
 			: Component.translatable("gui.createphantom.tunable_portable_ticker.unnamed_card");
 		graphics.renderComponentTooltip(font, List.of(note,
 			Component.translatable("gui.createphantom.tunable_portable_ticker.rmb_switch_channel")
-				.withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)), mouseX, mouseY);
+				.withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)),
+			mouseX, mouseY);
 	}
 }

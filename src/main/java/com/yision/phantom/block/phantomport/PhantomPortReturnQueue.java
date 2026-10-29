@@ -26,7 +26,6 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.items.IItemHandler;
 
 final class PhantomPortReturnQueue {
-
 	static final int RETURN_LAUNCH_DELAY_TICKS = 40;
 	private static final int RETURN_RETRY_INTERVAL_TICKS = 20;
 
@@ -65,9 +64,9 @@ final class PhantomPortReturnQueue {
 			AirCourierDeliveryService.TargetState state = task.dropPending()
 				? AirCourierDeliveryService.TargetState.UNAVAILABLE
 				: AirCourierDeliveryService.targetState(serverLevel.getServer(),
-				task.isPlayerReturn() ? AirCourierEntity.Mission.CARRIER_RETURN_TO_PLAYER :
-					AirCourierEntity.Mission.CARRIER_RETURN,
-				task.dimension(), task.pos(), task.playerId(), ItemStack.EMPTY);
+					task.isPlayerReturn() ? AirCourierEntity.Mission.CARRIER_RETURN_TO_PLAYER
+						: AirCourierEntity.Mission.CARRIER_RETURN,
+					task.dimension(), task.pos(), task.playerId(), ItemStack.EMPTY);
 			if (state == AirCourierDeliveryService.TargetState.PLAYER_OFFLINE) {
 				pendingReturnCarriers.addLast(task);
 				continue;
@@ -102,8 +101,7 @@ final class PhantomPortReturnQueue {
 	boolean receivePackageAndHandleCarrier(
 		ItemStack box,
 		@Nullable ResourceKey<Level> returnDimension,
-		@Nullable BlockPos returnPos
-	) {
+		@Nullable BlockPos returnPos) {
 		if (!inventory.receiveCourier(box))
 			return false;
 		if (returnDimension != null && returnPos != null) {
@@ -136,8 +134,8 @@ final class PhantomPortReturnQueue {
 		if (beltHandler == null)
 			return false;
 		ItemStack returningCarrier = task.isPlayerReturn()
-			? MiniPhantomItem.returningToPlayer(task.playerId()) :
-			MiniPhantomItem.returningTo(task.dimension(), task.pos());
+			? MiniPhantomItem.returningToPlayer(task.playerId())
+			: MiniPhantomItem.returningTo(task.dimension(), task.pos());
 		if (!beltHandler.insertItem(0, returningCarrier.copy(), true).isEmpty())
 			return false;
 		ItemStack storedCarrier = inventory.extractOneCarrier(false);
@@ -194,8 +192,7 @@ final class PhantomPortReturnQueue {
 						null, null, entry.getUUID("PlayerId"), nextAttempt, !absoluteTime, dropPending));
 				} else if ("phantom_port".equals(type)) {
 					ResourceKey<Level> dim = entry.contains("Dimension")
-						? ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(entry.getString("Dimension"
-					)))
+						? ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(entry.getString("Dimension")))
 						: null;
 					BlockPos pos = entry.contains("Pos")
 						? NbtUtils.readBlockPos(entry, "Pos").orElse(null)
@@ -215,8 +212,7 @@ final class PhantomPortReturnQueue {
 		@Nullable UUID playerId,
 		long nextAttemptGameTime,
 		boolean relativeTime,
-		boolean dropPending
-	) {
+		boolean dropPending) {
 		static PendingReturnCarrier toPhantomPort(ResourceKey<Level> dim, BlockPos pos, long now, int delay) {
 			return new PendingReturnCarrier(dim, pos.immutable(), null, now + delay, false, false);
 		}

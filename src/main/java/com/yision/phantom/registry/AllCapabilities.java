@@ -6,7 +6,6 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 
 public final class AllCapabilities {
-
 	private AllCapabilities() {
 	}
 

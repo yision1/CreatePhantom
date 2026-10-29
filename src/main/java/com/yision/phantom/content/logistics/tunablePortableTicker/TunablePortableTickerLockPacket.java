@@ -14,9 +14,9 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
 
 public record TunablePortableTickerLockPacket(TunablePortableTickerLocator locator, int channel,
-											  UUID sessionNetwork, boolean locked) implements ServerboundPacketPayload {
-	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerLockPacket> STREAM_CODEC =
-		StreamCodec.composite(
+	UUID sessionNetwork, boolean locked) implements ServerboundPacketPayload {
+	public static final StreamCodec<RegistryFriendlyByteBuf, TunablePortableTickerLockPacket> STREAM_CODEC = StreamCodec
+		.composite(
 			TunablePortableTickerLocator.STREAM_CODEC, TunablePortableTickerLockPacket::locator,
 			ByteBufCodecs.VAR_INT, TunablePortableTickerLockPacket::channel,
 			UUIDUtil.STREAM_CODEC, TunablePortableTickerLockPacket::sessionNetwork,

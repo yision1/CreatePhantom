@@ -14,7 +14,6 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 
 final class PhantomPortAutomation {
-
 	private final PhantomPortBlockEntity port;
 	private final PhantomPortInventory inventory;
 	private final PhantomPortBeltAccess beltAccess;
