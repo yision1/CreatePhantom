@@ -175,8 +175,10 @@ public final class AirCourierHudOverlay {
 		for (AirCourierHudEntry entry : displayedPayload.entries()) {
 			RenderedEntry old = previous.get(entry.id());
 			List<BigItemStack> displayEntries = old != null && entry.hasSameContents(old.entry())
-				? old.displayEntries() : entry.displayStacks().stream()
-				.map(FluidLogisticsPackageCompat::getDisplayEntry).toList();
+				? old.displayEntries()
+				: entry.displayStacks().stream()
+					.flatMap(stack -> FluidLogisticsPackageCompat.getDisplayEntries(stack).stream())
+					.limit(AirCourierPackagePreview.MAX_DISPLAY_STACKS).toList();
 			Component statusText = entry.status().asComponent();
 			Component addressText = Component.translatable("gui.createphantom.phantomport.arrival_time_display",
 				formatEta(entry.etaSeconds()));
