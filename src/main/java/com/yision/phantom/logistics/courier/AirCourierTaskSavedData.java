@@ -1,7 +1,9 @@
 package com.yision.phantom.logistics.courier;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -16,8 +18,10 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 public class AirCourierTaskSavedData extends SavedData {
 	private static final String DATA_NAME = "createphantom_courier_tasks";
+	private static final Factory<AirCourierTaskSavedData> FACTORY = new Factory<>(
+		AirCourierTaskSavedData::new, AirCourierTaskSavedData::load, null);
 
-	private final List<AirCourierTask> tasks = new ArrayList<>();
+	private final Map<UUID, AirCourierTask> tasks = new LinkedHashMap<>();
 
 	public AirCourierTaskSavedData() {
 	}
@@ -29,7 +33,8 @@ public class AirCourierTaskSavedData extends SavedData {
 			CompoundTag taskTag = list.getCompound(i);
 			try {
 				AirCourierTask task = AirCourierTask.load(registries, taskTag);
-				data.tasks.add(task);
+				if (data.tasks.putIfAbsent(task.id(), task) != null)
+					CreatePhantom.LOGGER.warn("Skipping duplicate saved courier task {}", task.id());
 			} catch (Exception e) {
 				CreatePhantom.LOGGER.warn("Skipping malformed courier task at saved-data index {}", i, e);
 			}
@@ -40,7 +45,7 @@ public class AirCourierTaskSavedData extends SavedData {
 	@Override
 	public @NotNull CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
 		ListTag list = new ListTag();
-		for (AirCourierTask task : tasks) {
+		for (AirCourierTask task : tasks.values()) {
 			if (!task.isRemoved()) {
 				list.add(task.save(registries, new CompoundTag()));
 			}
@@ -49,32 +54,25 @@ public class AirCourierTaskSavedData extends SavedData {
 		return tag;
 	}
 
-	public List<AirCourierTask> getTasks() {
-		return tasks;
+	public Collection<AirCourierTask> getTasks() {
+		return tasks.values();
+	}
+
+	public boolean contains(UUID id) {
+		return tasks.containsKey(id);
 	}
 
 	public void addTask(AirCourierTask task) {
-		tasks.add(task);
+		tasks.put(task.id(), task);
 		setDirty();
 	}
 
 	public void removeCompleted() {
-		tasks.removeIf(AirCourierTask::isRemoved);
-		setDirty();
-	}
-
-	public void markDirty() {
-		setDirty();
+		if (tasks.values().removeIf(AirCourierTask::isRemoved))
+			setDirty();
 	}
 
 	public static AirCourierTaskSavedData getOrCreate(MinecraftServer server) {
-		return server.getLevel(net.minecraft.world.level.Level.OVERWORLD)
-			.getDataStorage()
-			.computeIfAbsent(
-				new SavedData.Factory<AirCourierTaskSavedData>(
-					AirCourierTaskSavedData::new,
-					AirCourierTaskSavedData::load,
-					null),
-				DATA_NAME);
+		return server.overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
 	}
 }

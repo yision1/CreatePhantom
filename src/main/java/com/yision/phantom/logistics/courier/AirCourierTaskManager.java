@@ -31,65 +31,58 @@ public final class AirCourierTaskManager {
 
 	public static void onServerTick(ServerTickEvent.Post event) {
 		MinecraftServer server = event.getServer();
-		if (savedData == null) {
-			savedData = AirCourierTaskSavedData.getOrCreate(server);
-		}
-
-		List<AirCourierTask> tasks = savedData.getTasks();
+		AirCourierTaskSavedData data = getSavedData(server);
 		boolean hasCompletedTasks = false;
+		boolean changed = false;
 
-		for (AirCourierTask task : tasks) {
-			task.tick(server);
-
-			if (task.isRemoved()) {
-				removeVisualEntity(task);
-				hasCompletedTasks = true;
-				continue;
-			}
-
-			ServerLevel level = task.isActive() ? server.getLevel(task.currentDimension()) : null;
-			if (level != null && canShowEntity(level, task.position())) {
-				spawnOrSyncVisualEntity(level, task);
-			} else {
-				removeVisualEntity(task);
-			}
+		for (AirCourierTask task : data.getTasks()) {
+			changed |= task.tick(server);
+			hasCompletedTasks |= task.isRemoved();
+			updateVisualEntity(server, task);
 		}
 
-		if (hasCompletedTasks) {
-			savedData.removeCompleted();
-		} else if (!tasks.isEmpty()) {
-			savedData.markDirty();
-		}
+		if (hasCompletedTasks)
+			data.removeCompleted();
+		else if (changed)
+			data.setDirty();
 	}
 
 	public static void onServerStopping() {
-		if (savedData != null)
-			savedData.markDirty();
+		if (savedData != null) {
+			savedData.getTasks().forEach(AirCourierTask::releaseChunkTicket);
+			savedData.setDirty();
+		}
 		savedData = null;
 		clearRuntimeState();
 	}
 
-	public static void addTask(MinecraftServer server, AirCourierTask task) {
-		if (savedData == null) {
+	public static boolean addTask(MinecraftServer server, AirCourierTask task) {
+		AirCourierTaskSavedData data = getSavedData(server);
+		if (data.contains(task.id()) || !task.prepareForDispatch(server))
+			return false;
+		data.addTask(task);
+		updateVisualEntity(server, task);
+		return true;
+	}
+
+	private static AirCourierTaskSavedData getSavedData(MinecraftServer server) {
+		if (savedData == null)
 			savedData = AirCourierTaskSavedData.getOrCreate(server);
-		}
-		task.prepareForDispatch(server);
-		savedData.addTask(task);
-		ServerLevel level = server.getLevel(task.currentDimension());
-		if (task.isActive() && level != null && canShowEntity(level, task.position())) {
-			spawnOrSyncVisualEntity(level, task);
-		}
+		return savedData;
+	}
+
+	public static void onPlayerAvailable(ServerPlayer player) {
+		if (savedData != null)
+			savedData.getTasks().forEach(task -> task.wakeForPlayer(player.getUUID()));
 	}
 
 	public static void onPlayerLoggedOut(ServerPlayer player) {
 		if (savedData == null)
 			return;
 		for (AirCourierTask task : savedData.getTasks()) {
-			if (task.isActive() && task.targetPhantomPortPos() == null
-				&& player.getUUID().equals(task.targetPlayerId())) {
-				task.pauseForPlayer(player.getServer());
+			if (task.pauseForPlayer(player.getUUID())) {
 				removeVisualEntity(task);
-				savedData.markDirty();
+				savedData.setDirty();
 			}
 		}
 	}
@@ -100,15 +93,20 @@ public final class AirCourierTaskManager {
 		List<AirCourierTask.AirCourierTaskSnapshot> snapshots = new ArrayList<>();
 		for (AirCourierTask task : savedData.getTasks()) {
 			UUID playerId = task.getHudTrackingPlayerId();
-			if (task.isRemoved() || playerId == null || server.getPlayerList().getPlayer(playerId) == null)
+			if (playerId == null || server.getPlayerList().getPlayer(playerId) == null)
 				continue;
 			snapshots.add(task.snapshot(server));
 		}
 		return snapshots;
 	}
 
-	private static boolean canShowEntity(ServerLevel level, net.minecraft.world.phys.Vec3 pos) {
-		return level.isPositionEntityTicking(BlockPos.containing(pos));
+	private static void updateVisualEntity(MinecraftServer server, AirCourierTask task) {
+		ServerLevel level = task.isActive() ? server.getLevel(task.currentDimension()) : null;
+		if (level != null && level.isPositionEntityTicking(BlockPos.containing(task.position()))) {
+			spawnOrSyncVisualEntity(level, task);
+		} else {
+			removeVisualEntity(task);
+		}
 	}
 
 	private static void spawnOrSyncVisualEntity(ServerLevel level, AirCourierTask task) {

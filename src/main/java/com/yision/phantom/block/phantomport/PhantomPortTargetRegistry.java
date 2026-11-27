@@ -1,16 +1,13 @@
 package com.yision.phantom.block.phantomport;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.simibubi.create.content.logistics.box.PackageItem;
 import com.yision.phantom.compat.sable.SableCompat;
 import com.yision.phantom.logistics.address.PhantomAddressRules;
 
@@ -26,95 +23,61 @@ public final class PhantomPortTargetRegistry {
 	private static final int ENTRY_TIMEOUT_TICKS = 60;
 	private static final Map<ResourceKey<Level>, Map<BlockPos, Entry>> TARGETS = new HashMap<>();
 
+	private static final Comparator<RankedTarget> TARGET_ORDER = Comparator
+		.comparing(RankedTarget::otherDimension)
+		.thenComparing(target -> !target.exact())
+		.thenComparingDouble(RankedTarget::distance)
+		.thenComparing(target -> target.location().dimension().location().toString())
+		.thenComparing(target -> target.location().address())
+		.thenComparingLong(target -> target.location().pos().asLong());
+
 	private PhantomPortTargetRegistry() {
 	}
 
 	public static void update(ServerLevel level, BlockPos pos, String address) {
 		Map<BlockPos, Entry> entries = TARGETS.computeIfAbsent(level.dimension(), key -> new HashMap<>());
-		String normalized = normalize(address);
-		if (PhantomAddressRules.isBlank(normalized)) {
+		String normalized = address == null ? "" : address.trim();
+		String canonical = PhantomAddressRules.canonical(normalized);
+		if (canonical.isBlank()) {
 			entries.remove(pos);
 			if (entries.isEmpty()) {
 				TARGETS.remove(level.dimension());
 			}
 			return;
 		}
-		entries.put(pos.immutable(), new Entry(normalized, level.getServer().getTickCount()));
-	}
-
-	public static @Nullable BlockPos findMatching(ServerLevel level, String address, @Nullable Vec3 origin) {
-		String normalized = normalize(address);
-		if (PhantomAddressRules.isBlank(normalized)) {
-			return null;
-		}
-
-		Map<BlockPos, Entry> entries = TARGETS.get(level.dimension());
-		if (entries == null || entries.isEmpty()) {
-			return null;
-		}
-
-		return entries.entrySet()
-			.stream()
-			.filter(entry -> PhantomAddressRules.matches(normalized, entry.getValue().address))
-			.sorted(Comparator.<Map.Entry<BlockPos, Entry>>comparingInt(
-				entry -> exactMatch(normalized, entry.getValue().address) ? 0 : 1)
-				.thenComparingDouble(entry -> distanceTo(level, origin, entry.getKey()))
-				.thenComparing(entry -> entry.getValue().address))
-			.map(Map.Entry::getKey)
-			.findFirst()
-			.orElse(null);
+		entries.put(pos.immutable(), new Entry(normalized, canonical, level.getServer().getTickCount()));
 	}
 
 	public static @Nullable TargetLocation findMatchingAnyDimension(ServerLevel level, String address,
-		@Nullable Vec3 origin) {
-		return findMatchingAnyDimension(level, address, origin, null, null);
-	}
-
-	public static @Nullable TargetLocation findMatchingAnyDimension(ServerLevel level, String address,
-		@Nullable Vec3 origin,
-		@Nullable ResourceKey<Level> excludedDimension, @Nullable BlockPos excludedPos) {
-		return findMatchingAnyDimension(level, address, origin, excludedDimension, excludedPos, target -> true);
-	}
-
-	public static @Nullable TargetLocation findMatchingAnyDimension(ServerLevel level, String address,
-		@Nullable Vec3 origin,
-		@Nullable ResourceKey<Level> excludedDimension, @Nullable BlockPos excludedPos,
+		@Nullable Vec3 origin, @Nullable ResourceKey<Level> excludedDimension, @Nullable BlockPos excludedPos,
 		Predicate<TargetLocation> predicate) {
-		String normalized = normalize(address);
-		if (PhantomAddressRules.isBlank(normalized)) {
+		String canonical = PhantomAddressRules.canonical(address);
+		if (canonical.isBlank())
 			return null;
+
+		Vec3 worldOrigin = origin == null ? null : SableCompat.projectOutOfSubLevel(level, origin);
+		RankedTarget best = null;
+		for (var dimensionEntry : TARGETS.entrySet()) {
+			ResourceKey<Level> dimension = dimensionEntry.getKey();
+			boolean sameDimension = dimension.equals(level.dimension());
+			for (var entry : dimensionEntry.getValue().entrySet()) {
+				BlockPos pos = entry.getKey();
+				Entry port = entry.getValue();
+				if (isExcluded(dimension, pos, excludedDimension, excludedPos)
+					|| !PackageItem.matchAddress(canonical, port.canonicalAddress())) {
+					continue;
+				}
+				double distance = sameDimension && worldOrigin != null
+					? worldOrigin.distanceToSqr(SableCompat.projectOutOfSubLevel(level, Vec3.atCenterOf(pos)))
+					: 0;
+				TargetLocation location = new TargetLocation(dimension, pos, port.address());
+				RankedTarget candidate = new RankedTarget(location, !sameDimension,
+					canonical.equalsIgnoreCase(port.canonicalAddress()), distance);
+				if ((best == null || TARGET_ORDER.compare(candidate, best) < 0) && predicate.test(location))
+					best = candidate;
+			}
 		}
-
-		return TARGETS.entrySet()
-			.stream()
-			.flatMap(levelEntry -> levelEntry.getValue()
-				.entrySet()
-				.stream()
-				.filter(entry -> PhantomAddressRules.matches(normalized, entry.getValue().address))
-				.filter(entry -> !isExcluded(levelEntry.getKey(), entry.getKey(), excludedDimension, excludedPos))
-				.map(entry -> new TargetLocation(levelEntry.getKey(), entry.getKey(), entry.getValue().address)))
-			.sorted(Comparator
-				.<TargetLocation>comparingInt(target -> target.dimension().equals(level.dimension()) ? 0 : 1)
-				.thenComparingInt(target -> exactMatch(normalized, target.address()) ? 0 : 1)
-				.thenComparingDouble(target -> target.dimension().equals(level.dimension())
-					? distanceTo(level, origin, target.pos())
-					: 0)
-				.thenComparing(target -> target.dimension().location().toString())
-				.thenComparing(TargetLocation::address))
-			.filter(predicate)
-			.findFirst()
-			.orElse(null);
-	}
-
-	public static List<String> getKnownNames(ServerLevel level) {
-		Set<String> uniqueNames = new LinkedHashSet<>();
-		TARGETS.values()
-			.stream()
-			.flatMap(entries -> entries.values().stream())
-			.map(entry -> entry.address)
-			.sorted(String::compareToIgnoreCase)
-			.forEach(uniqueNames::add);
-		return new ArrayList<>(uniqueNames);
+		return best == null ? null : best.location();
 	}
 
 	public static void onServerTick(ServerTickEvent.Post event) {
@@ -122,6 +85,8 @@ public final class PhantomPortTargetRegistry {
 		if (currentTick % 20 != 0) {
 			return;
 		}
+		if (currentTick % 200 == 0 && SableCompat.isLoaded())
+			PhantomPortLocations.get(event.getServer()).removeMissingPlots(event.getServer());
 		TARGETS.entrySet().removeIf(levelEntry -> {
 			levelEntry.getValue().entrySet()
 				.removeIf(entry -> currentTick - entry.getValue().lastSeenTick > ENTRY_TIMEOUT_TICKS);
@@ -133,30 +98,16 @@ public final class PhantomPortTargetRegistry {
 		TARGETS.clear();
 	}
 
-	private static String normalize(String address) {
-		return address == null ? "" : address.trim();
-	}
-
-	private static boolean exactMatch(String left, String right) {
-		return PhantomAddressRules.canonical(left).equalsIgnoreCase(PhantomAddressRules.canonical(right));
-	}
-
-	private static double distanceTo(ServerLevel level, @Nullable Vec3 origin, BlockPos pos) {
-		if (origin == null) {
-			return 0;
-		}
-		Vec3 projectedOrigin = SableCompat.projectOutOfSubLevel(level, origin);
-		Vec3 projectedTarget = SableCompat.projectOutOfSubLevel(level, Vec3.atCenterOf(pos));
-		return projectedOrigin.distanceToSqr(projectedTarget);
-	}
-
 	private static boolean isExcluded(ResourceKey<Level> dimension, BlockPos pos,
 		@Nullable ResourceKey<Level> excludedDimension, @Nullable BlockPos excludedPos) {
 		return excludedDimension != null && excludedPos != null
 			&& dimension.equals(excludedDimension) && pos.equals(excludedPos);
 	}
 
-	private record Entry(String address, int lastSeenTick) {
+	private record Entry(String address, String canonicalAddress, int lastSeenTick) {
+	}
+
+	private record RankedTarget(TargetLocation location, boolean otherDimension, boolean exact, double distance) {
 	}
 
 	public record TargetLocation(ResourceKey<Level> dimension, BlockPos pos, String address) {

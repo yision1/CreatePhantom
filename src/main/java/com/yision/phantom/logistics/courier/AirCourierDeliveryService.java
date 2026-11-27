@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import com.simibubi.create.content.logistics.box.PackageEntity;
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
+import com.yision.phantom.block.phantomport.PhantomPortReference;
 import com.yision.phantom.entity.courier.AirCourierEntity;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
 import com.yision.phantom.registry.AllItems;
@@ -28,51 +29,25 @@ public final class AirCourierDeliveryService {
 	private AirCourierDeliveryService() {
 	}
 
-	public enum TargetState {
-		AVAILABLE, PLAYER_OFFLINE, UNAVAILABLE
-	}
-
-	public static TargetState targetState(MinecraftServer server, AirCourierEntity.Mission mission,
-		@Nullable ResourceKey<Level> dimension, @Nullable BlockPos portPos,
-		@Nullable UUID playerId, ItemStack box) {
-		if (portPos != null) {
-			PhantomPortBlockEntity port = resolveTargetPhantomPort(
-				dimension != null ? server.getLevel(dimension) : null, portPos);
-			return port != null && (mission == AirCourierEntity.Mission.CARRIER_RETURN
-				? port.canReceiveCarrier()
-				: port.canReceiveCourier(box))
-					? TargetState.AVAILABLE
-					: TargetState.UNAVAILABLE;
-		}
-		if (playerId == null)
-			return TargetState.UNAVAILABLE;
-		ServerPlayer player = server.getPlayerList().getPlayer(playerId);
-		if (player == null)
-			return TargetState.PLAYER_OFFLINE;
-		return player.isAlive() ? TargetState.AVAILABLE : TargetState.UNAVAILABLE;
-	}
-
-	public static boolean finishDelivery(
+	static boolean finishDelivery(
 		MinecraftServer server,
 		ItemStack box,
 		AirCourierEntity.Mission mission,
 		@Nullable ResourceKey<Level> sourceDimension,
 		@Nullable BlockPos sourcePhantomPortPos,
+		@Nullable PhantomPortReference sourcePort,
 		@Nullable UUID sourcePlayerId,
-		@Nullable ResourceKey<Level> targetDimension,
-		@Nullable BlockPos targetPhantomPortPos,
+		@Nullable PhantomPortBlockEntity targetPhantomPort,
 		@Nullable UUID targetPlayerId,
 		@Nullable UUID hudPlayerId,
 		@Nullable UUID hudEntryId) {
-		ServerLevel targetLevel = resolveTargetLevel(server, targetDimension, targetPhantomPortPos, targetPlayerId);
-		PhantomPortBlockEntity targetPhantomPort = resolveTargetPhantomPort(targetLevel, targetPhantomPortPos);
 		ServerPlayer targetPlayer = targetPhantomPort == null ? resolvePlayer(server, targetPlayerId) : null;
 
 		ServerPlayer hudPlayer = resolvePlayer(server, hudPlayerId);
 
 		switch (mission) {
 			case PACKAGE_TO_PLAYER -> {
-				if (targetPlayer == null || !AirCourierHelper.deliverPackageOnly(targetPlayer, box)) {
+				if (targetPlayer == null || !PackageItem.isPackage(box) || !givePackage(targetPlayer, box)) {
 					return false;
 				}
 				AirCourierHudSync.onCourierDelivered(targetPlayer, box, hudEntryId);
@@ -90,7 +65,7 @@ public final class AirCourierDeliveryService {
 					received = targetPhantomPort.receivePackageAndScheduleCarrierReturnToPlayer(box, sourcePlayerId);
 				} else {
 					received = targetPhantomPort.receivePackageAndHandleCarrier(box,
-						sourceDimension, sourcePhantomPortPos);
+						sourceDimension, sourcePhantomPortPos, sourcePort);
 				}
 				if (!received) {
 					return false;
@@ -104,15 +79,31 @@ public final class AirCourierDeliveryService {
 				return targetPhantomPort != null && targetPhantomPort.receiveCarrier();
 			}
 			case CARRIER_RETURN_TO_PLAYER -> {
-				if (targetPlayer == null) {
+				if (targetPlayer == null || !giveCarrier(targetPlayer))
 					return false;
-				}
-				AirCourierHelper.deliverCarrier(targetPlayer);
 				AirCourierHudSync.onCourierDelivered(targetPlayer, box, hudEntryId);
 				return true;
 			}
 		}
 		return false;
+	}
+
+	private static boolean givePackage(ServerPlayer player, ItemStack box) {
+		ItemStack remaining = box.copy();
+		tryInsert(player, remaining);
+		return remaining.isEmpty() || dropPackage(player.serverLevel(), player.position(), remaining);
+	}
+
+	private static boolean giveCarrier(ServerPlayer player) {
+		ItemStack carrier = AllItems.MINI_PHANTOM.asStack();
+		tryInsert(player, carrier);
+		return carrier.isEmpty() || dropCarrier(player.serverLevel(), player.position());
+	}
+
+	private static void tryInsert(ServerPlayer player, ItemStack stack) {
+		var inventory = player.getInventory();
+		if (inventory.getSlotWithRemainingSpace(stack) >= 0 || inventory.getFreeSlot() >= 0)
+			inventory.add(stack);
 	}
 
 	public static void notifyFailure(
@@ -153,30 +144,19 @@ public final class AirCourierDeliveryService {
 		}
 	}
 
-	public static @Nullable ServerLevel resolveTargetLevel(
-		net.minecraft.server.MinecraftServer server,
-		@Nullable ResourceKey<Level> targetDimension,
-		@Nullable BlockPos targetPhantomPortPos,
-		@Nullable UUID targetPlayerId) {
-		if (targetPhantomPortPos != null && targetDimension != null) {
-			return server.getLevel(targetDimension);
-		}
-		ServerPlayer player = resolvePlayer(server, targetPlayerId);
-		if (player != null) {
-			return player.serverLevel();
-		}
-		return targetDimension != null ? server.getLevel(targetDimension) : null;
-	}
-
 	public static @Nullable PhantomPortBlockEntity resolveTargetPhantomPort(
 		@Nullable ServerLevel level, @Nullable BlockPos pos) {
-		if (level == null || pos == null || !level.isPositionEntityTicking(pos))
+		if (level == null || pos == null || !isPortChunkLoaded(level, pos))
 			return null;
-		return level.getBlockEntity(pos) instanceof PhantomPortBlockEntity be ? be : null;
+		return level.getBlockEntity(pos) instanceof PhantomPortBlockEntity port && !port.isRemoved() ? port : null;
+	}
+
+	public static boolean isPortChunkLoaded(ServerLevel level, BlockPos pos) {
+		return level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) != null;
 	}
 
 	public static @Nullable ServerPlayer resolvePlayer(
-		net.minecraft.server.MinecraftServer server, @Nullable UUID playerId) {
+		MinecraftServer server, @Nullable UUID playerId) {
 		if (playerId == null)
 			return null;
 		ServerPlayer player = server.getPlayerList().getPlayer(playerId);

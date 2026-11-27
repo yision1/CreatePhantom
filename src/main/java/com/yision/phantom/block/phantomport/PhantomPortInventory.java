@@ -20,6 +20,7 @@ final class PhantomPortInventory {
 	private final PhantomPortBlockEntity port;
 	final ItemStackHandler carrierInventory;
 	final IItemHandler combinedHandler;
+	private boolean launchingCarrier;
 
 	PhantomPortInventory(PhantomPortBlockEntity port) {
 		this.port = port;
@@ -31,7 +32,14 @@ final class PhantomPortInventory {
 			}
 
 			@Override
+			public int getSlotLimit(int slot) {
+				return AllItems.MINI_PHANTOM.get().getDefaultMaxStackSize();
+			}
+
+			@Override
 			protected void onContentsChanged(int slot) {
+				if (!launchingCarrier && !isEmptyCarrier(getStackInSlot(slot)))
+					port.cancelPendingReturns();
 				port.onCarrierContentsChanged();
 			}
 		};
@@ -121,11 +129,9 @@ final class PhantomPortInventory {
 				|| !PhantomAddressRules.matchesPackage(preview, filterString)) {
 				return ItemStack.EMPTY;
 			}
+			return port.inventory.extractItem(slot, amount, simulate);
 		}
-		ItemStack extracted = isPackageSlot(slot)
-			? port.inventory.extractItem(slot, amount, simulate)
-			: carrierInventory.extractItem(toCarrierSlot(slot), amount, simulate);
-		return extracted;
+		return carrierInventory.extractItem(toCarrierSlot(slot), amount, simulate);
 	}
 
 	private int getCombinedSlotLimit(int slot) {
@@ -149,15 +155,19 @@ final class PhantomPortInventory {
 			&& MiniPhantomItem.getPlayerReturnTarget(stack).isEmpty();
 	}
 
-	boolean hasUsableCarrier() {
+	boolean hasCarrier() {
 		return isEmptyCarrier(carrierInventory.getStackInSlot(0));
 	}
 
-	ItemStack extractOneCarrier(boolean simulate) {
-		if (!hasUsableCarrier()) {
+	ItemStack extractOneCarrier() {
+		if (!hasCarrier())
 			return ItemStack.EMPTY;
+		launchingCarrier = true;
+		try {
+			return carrierInventory.extractItem(0, 1, false);
+		} finally {
+			launchingCarrier = false;
 		}
-		return carrierInventory.extractItem(0, 1, simulate);
 	}
 
 	boolean addPackage(ItemStack stack, boolean simulate) {
@@ -165,11 +175,8 @@ final class PhantomPortInventory {
 			return false;
 		}
 		for (int slot = 0; slot < port.inventory.getSlots(); slot++) {
-			ItemStack remainder = port.inventory.insertItem(slot, stack, simulate);
-			if (!remainder.isEmpty()) {
-				continue;
-			}
-			return true;
+			if (port.inventory.insertItem(slot, stack, true).isEmpty())
+				return simulate || port.inventory.insertItem(slot, stack, false).isEmpty();
 		}
 		return false;
 	}
@@ -183,39 +190,20 @@ final class PhantomPortInventory {
 		if (!canReceiveCourier(box)) {
 			return false;
 		}
-		ItemStack carrier = AllItems.MINI_PHANTOM.asStack();
-		carrierInventory.insertItem(0, carrier.copy(), false);
-		addPackage(box.copy(), false);
-		return true;
-	}
-
-	boolean canReceiveCarrier() {
-		ItemStack carrier = AllItems.MINI_PHANTOM.asStack();
-		return carrierInventory.insertItem(0, carrier, true).isEmpty();
+		if (!receiveCarrier())
+			return false;
+		if (addPackage(box.copy(), false))
+			return true;
+		extractOneCarrier();
+		return false;
 	}
 
 	boolean receiveCarrier() {
-		if (!canReceiveCarrier()) {
-			return false;
-		}
-		carrierInventory.insertItem(0, AllItems.MINI_PHANTOM.asStack().copy(), false);
-		return true;
+		return carrierInventory.insertItem(0, AllItems.MINI_PHANTOM.asStack(), false).isEmpty();
 	}
 
 	void returnCarrier(ItemStack carrier) {
 		carrierInventory.insertItem(0, carrier, false);
-	}
-
-	boolean dropOneCarrier() {
-		ItemStack carrier = extractOneCarrier(true);
-		if (carrier.isEmpty() || port.getLevel() == null)
-			return false;
-		BlockPos pos = port.getBlockPos();
-		if (!port.getLevel().addFreshEntity(new ItemEntity(port.getLevel(),
-			pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, carrier.copy())))
-			return false;
-		extractOneCarrier(false);
-		return true;
 	}
 
 	void dropAllCarriers() {

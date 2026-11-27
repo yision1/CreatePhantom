@@ -25,8 +25,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item.TooltipContext;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Item.TooltipContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
@@ -89,7 +89,8 @@ public class MiniPhantomItem extends Item {
 		}
 
 		if (!level.isClientSide()) {
-			level.addFreshEntity(courier);
+			if (!level.addFreshEntity(courier))
+				return InteractionResult.FAIL;
 			if (!player.getAbilities().instabuild) {
 				stack.shrink(1);
 			}
@@ -160,6 +161,13 @@ public class MiniPhantomItem extends Item {
 		phantom.remove(AllDataComponents.MINI_PHANTOM_CARGO);
 	}
 
+	public static void clearDispatch(ItemStack stack) {
+		if (stack.remove(AllDataComponents.MINI_PHANTOM_DISPATCH.get()) != null) {
+			stack.remove(AllDataComponents.MINI_PHANTOM_RETURN_TARGET);
+			stack.remove(AllDataComponents.MINI_PHANTOM_HUD_ID);
+		}
+	}
+
 	public static void setHeadingAngle(ItemStack stack, int headingAngle) {
 		stack.set(AllDataComponents.MINI_PHANTOM_HEADING, Math.floorMod(headingAngle, 360));
 	}
@@ -180,14 +188,6 @@ public class MiniPhantomItem extends Item {
 	@Nullable
 	public static UUID getHudEntryId(ItemStack stack) {
 		return stack.get(AllDataComponents.MINI_PHANTOM_HUD_ID);
-	}
-
-	public static boolean hasHudEntryId(ItemStack stack) {
-		return stack.has(AllDataComponents.MINI_PHANTOM_HUD_ID);
-	}
-
-	public static void clearHudEntryId(ItemStack stack) {
-		stack.remove(AllDataComponents.MINI_PHANTOM_HUD_ID);
 	}
 
 	public static ItemStack returningTo(ResourceKey<Level> dimension, BlockPos pos) {

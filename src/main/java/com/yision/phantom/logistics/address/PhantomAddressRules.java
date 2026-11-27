@@ -1,5 +1,7 @@
 package com.yision.phantom.logistics.address;
 
+import org.jetbrains.annotations.Nullable;
+
 import com.simibubi.create.content.logistics.box.PackageItem;
 
 import net.minecraft.world.item.ItemStack;
@@ -26,18 +28,23 @@ public final class PhantomAddressRules {
 		return canonical(address).isBlank();
 	}
 
-	public static boolean matches(String left, String right) {
-		return PackageItem.matchAddress(canonical(left), canonical(right));
+	public static @Nullable String playerName(String address) {
+		return explicitPlayerName(canonical(address));
 	}
 
-	public static boolean exact(String left, String right) {
-		return canonical(left).equalsIgnoreCase(canonical(right));
+	private static @Nullable String explicitPlayerName(String address) {
+		if (address.startsWith("@"))
+			return address.substring(1).trim();
+		int start = address.indexOf('<');
+		int end = address.indexOf('>', start + 1);
+		return start >= 0 && end > start + 1 ? address.substring(start + 1, end).trim() : null;
 	}
 
 	public static boolean matchesPackage(ItemStack box, String address) {
-		if (!PackageItem.isPackage(box)) {
+		if (!PackageItem.isPackage(box))
 			return false;
-		}
-		return matches(PackageItem.getAddress(box), address);
+		String packageAddress = canonical(PackageItem.getAddress(box));
+		return explicitPlayerName(packageAddress) == null
+			&& PackageItem.matchAddress(packageAddress, canonical(address));
 	}
 }

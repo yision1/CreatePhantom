@@ -3,14 +3,17 @@ package com.yision.phantom.block.phantomport;
 import org.jetbrains.annotations.Nullable;
 
 import com.simibubi.create.AllBlocks;
+import com.simibubi.create.content.kinetics.belt.BeltBlock;
 import com.simibubi.create.content.kinetics.belt.BeltBlockEntity;
 import com.simibubi.create.content.logistics.funnel.BeltFunnelBlock;
 import com.simibubi.create.content.logistics.funnel.FunnelBlock;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.yision.phantom.logistics.courier.AirCourierHelper;
+import com.yision.phantom.logistics.courier.AirCourierLaunchRules;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -42,21 +45,11 @@ final class PhantomPortBeltAccess {
 		}
 		BlockState funnelState = port.getLevel().getBlockState(funnelPos);
 		if (AllBlocks.ANDESITE_FUNNEL.has(funnelState)) {
-			if (funnelState.getValue(FunnelBlock.FACING) != side) {
+			if (funnelState.getValue(FunnelBlock.FACING) != side || !funnelState.getValue(FunnelBlock.EXTRACTING))
 				return false;
-			}
-			if (!funnelState.getValue(FunnelBlock.EXTRACTING)) {
-				return false;
-			}
-			return isBeltOutputCompatible(side);
-		}
-		if (!AllBlocks.ANDESITE_BELT_FUNNEL.has(funnelState)) {
-			return false;
-		}
-		if (funnelState.getValue(BeltFunnelBlock.HORIZONTAL_FACING) != side) {
-			return false;
-		}
-		if (funnelState.getValue(BeltFunnelBlock.SHAPE) == BeltFunnelBlock.Shape.PULLING) {
+		} else if (!AllBlocks.ANDESITE_BELT_FUNNEL.has(funnelState)
+			|| funnelState.getValue(BeltFunnelBlock.HORIZONTAL_FACING) != side
+			|| funnelState.getValue(BeltFunnelBlock.SHAPE) == BeltFunnelBlock.Shape.PULLING) {
 			return false;
 		}
 		return isBeltOutputCompatible(side);
@@ -78,6 +71,31 @@ final class PhantomPortBeltAccess {
 		var beltInput = BlockEntityBehaviour.get(port.getLevel(), beltPos,
 			com.simibubi.create.content.kinetics.belt.behaviour.DirectBeltInputBehaviour.TYPE);
 		return beltInput != null && beltInput.canInsertFromSide(side);
+	}
+
+	boolean hasMissingReturnOutlet() {
+		Level level = port.getLevel();
+		if (level == null)
+			return false;
+		Direction side = specialSide();
+		BlockPos funnelPos = funnelPos(side);
+		if (level.hasChunkAt(funnelPos)) {
+			BlockState funnel = level.getBlockState(funnelPos);
+			if (!AllBlocks.ANDESITE_FUNNEL.has(funnel) && !AllBlocks.ANDESITE_BELT_FUNNEL.has(funnel))
+				return true;
+		}
+		BlockPos beltPos = beltPos(side);
+		return level.hasChunkAt(beltPos) && !(level.getBlockState(beltPos).getBlock() instanceof BeltBlock);
+	}
+
+	boolean canLaunchThrough(Direction side) {
+		if (!canDispatchThrough(side) || port.getLevel() == null)
+			return false;
+		if (!(port.getLevel().getBlockEntity(beltPos(side)) instanceof BeltBlockEntity segment))
+			return false;
+		BeltBlockEntity belt = segment.getControllerBE();
+		return belt != null && AirCourierLaunchRules.canLaunchFrom(belt, segment.index,
+			belt.getDirectionAwareBeltMovementSpeed() > 0);
 	}
 
 	Direction resolveBeltHeading(Direction side) {

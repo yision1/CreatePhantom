@@ -3,9 +3,8 @@ package com.yision.phantom.logistics.courier;
 import org.jetbrains.annotations.Nullable;
 
 import com.simibubi.create.content.logistics.box.PackageItem;
-import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry.TargetLocation;
 import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry;
-import com.yision.phantom.entity.courier.AirCourierEntity;
+import com.yision.phantom.block.phantomport.PhantomPortTargetRegistry.TargetLocation;
 import com.yision.phantom.logistics.address.PhantomAddressRules;
 
 import net.minecraft.core.BlockPos;
@@ -22,54 +21,33 @@ public final class AirCourierDispatchService {
 
 	public static @Nullable AirCourierTarget resolvePackageTarget(ServerLevel level, ItemStack box,
 		Vec3 origin, @Nullable ResourceKey<Level> sourceDimension, @Nullable BlockPos sourcePos) {
-		ServerPlayer player = AirCourierDimensionRules.allowCrossDimensionDelivery()
-			? AirCourierHelper.findTargetPlayerAnyDimension(level, box)
-			: AirCourierHelper.findTargetPlayer(level, box);
-		if (player != null && canReceivePackageTarget(level, new AirCourierTarget.PlayerTarget(player.getUUID(),
-			player.serverLevel().dimension()), box)) {
-			return new AirCourierTarget.PlayerTarget(player.getUUID(), player.serverLevel().dimension());
-		}
-
-		return findPhantomPortExcludingSource(level, box, origin, sourceDimension, sourcePos);
-	}
-
-	private static @Nullable AirCourierTarget.PhantomPortTarget findPhantomPortExcludingSource(ServerLevel level,
-		ItemStack box,
-		Vec3 origin, @Nullable ResourceKey<Level> sourceDimension, @Nullable BlockPos sourcePos) {
-		if (!PackageItem.isPackage(box)) {
+		if (!PackageItem.isPackage(box))
+			return null;
+		String address = PackageItem.getAddress(box);
+		String playerName = PhantomAddressRules.playerName(address);
+		if (playerName != null) {
+			for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+				if (player.isAlive() && playerName.equalsIgnoreCase(player.getGameProfile().getName())
+					&& AirCourierDimensionRules.canTarget(level, player.serverLevel().dimension())) {
+					return new AirCourierTarget.PlayerTarget(player.getUUID(), player.serverLevel().dimension());
+				}
+			}
 			return null;
 		}
-		String address = PhantomAddressRules.canonical(PackageItem.getAddress(box));
-		if (address.isBlank()) {
-			return null;
-		}
+
 		TargetLocation location = PhantomPortTargetRegistry.findMatchingAnyDimension(level, address, origin,
 			sourceDimension, sourcePos, target -> AirCourierDimensionRules.canTarget(level, target.dimension())
-				&& canReceivePhantomPortTarget(level, target, box));
+				&& isMatchingLoadedPort(level, target, box));
 		if (location == null) {
 			return null;
 		}
 		return new AirCourierTarget.PhantomPortTarget(location.dimension(), location.pos());
 	}
 
-	public static boolean canReceivePackageTarget(ServerLevel level, AirCourierTarget target, ItemStack box) {
-		if (!AirCourierDimensionRules.canTarget(level, target.dimension())) {
-			return false;
-		}
-		return switch (target) {
-			case AirCourierTarget.PlayerTarget playerTarget -> {
-				ServerPlayer player = level.getServer().getPlayerList().getPlayer(playerTarget.playerId());
-				yield player != null && player.isAlive()
-					&& player.serverLevel().dimension().equals(playerTarget.dimension());
-			}
-			case AirCourierTarget.PhantomPortTarget phantomPortTarget -> canReceivePhantomPortTarget(level,
-				new TargetLocation(phantomPortTarget.dimension(), phantomPortTarget.pos(), ""), box);
-		};
+	private static boolean isMatchingLoadedPort(ServerLevel level, TargetLocation target, ItemStack box) {
+		var port = AirCourierDeliveryService.resolveTargetPhantomPort(
+			level.getServer().getLevel(target.dimension()), target.pos());
+		return port != null && PhantomAddressRules.matchesPackage(box, port.getFilterString())
+			&& port.canReceiveCourier(box);
 	}
-
-	private static boolean canReceivePhantomPortTarget(ServerLevel level, TargetLocation target, ItemStack box) {
-		return AirCourierDeliveryService.targetState(level.getServer(), AirCourierEntity.Mission.PACKAGE_TO_AIRPORT,
-			target.dimension(), target.pos(), null, box) == AirCourierDeliveryService.TargetState.AVAILABLE;
-	}
-
 }

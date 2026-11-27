@@ -1,7 +1,11 @@
 package com.yision.phantom.compat.sable;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import org.jetbrains.annotations.Nullable;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -27,7 +31,19 @@ public final class SableCompat {
 		return SableLoadedCompat.projectVector(level, origin, vector);
 	}
 
-	private static boolean isLoaded() {
+	public static Optional<UUID> subLevelId(Level level, BlockPos pos) {
+		return isLoaded() ? SableLoadedCompat.subLevelId(level, pos) : Optional.empty();
+	}
+
+	public static boolean isSubLevelPlot(Level level, BlockPos pos) {
+		return isLoaded() && SableLoadedCompat.isSubLevelPlot(level, pos);
+	}
+
+	public static boolean isOccupiedPlot(Level level, BlockPos pos) {
+		return isLoaded() && SableLoadedCompat.isOccupiedPlot(level, pos);
+	}
+
+	public static boolean isLoaded() {
 		return ModList.get().isLoaded(SABLE_MOD_ID);
 	}
 }

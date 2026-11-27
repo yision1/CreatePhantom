@@ -3,18 +3,22 @@ package com.yision.phantom.block.phantomport;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import com.simibubi.create.content.logistics.box.PackageItem;
+import com.yision.phantom.item.miniphantom.MiniPhantomDispatch;
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
 import com.yision.phantom.logistics.address.PhantomAddressRules;
+import com.yision.phantom.logistics.courier.AirCourierDeliveryService;
 import com.yision.phantom.logistics.courier.AirCourierDispatchService;
 import com.yision.phantom.logistics.courier.AirCourierHelper;
 import com.yision.phantom.logistics.courier.AirCourierTarget;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
+import com.yision.phantom.registry.AllDataComponents;
 
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -30,8 +34,8 @@ final class PhantomPortDispatchAccess {
 	private final PhantomPortBeltAccess beltAccess;
 
 	private final EnumMap<Direction, IItemHandler> launchFunnelHandlers = new EnumMap<>(Direction.class);
-	private final EnumMap<Direction, IItemHandler> packageFunnelHandlers = new EnumMap<>(Direction.class);
-	private final Map<Integer, PendingHudEntry> pendingHudEntries = new HashMap<>();
+	private final IItemHandler packageFunnelHandler = createPackageFunnelHandler();
+	private final Map<Integer, PendingDispatch> pendingDispatches = new HashMap<>();
 
 	PhantomPortDispatchAccess(PhantomPortBlockEntity port,
 		PhantomPortInventory inventory,
@@ -40,10 +44,8 @@ final class PhantomPortDispatchAccess {
 		this.inventory = inventory;
 		this.beltAccess = beltAccess;
 
-		for (Direction direction : Direction.Plane.HORIZONTAL) {
+		for (Direction direction : Direction.Plane.HORIZONTAL)
 			launchFunnelHandlers.put(direction, createLaunchFunnelHandler(direction));
-			packageFunnelHandlers.put(direction, createPackageFunnelHandler(direction));
-		}
 	}
 
 	@Nullable
@@ -53,14 +55,14 @@ final class PhantomPortDispatchAccess {
 				return beltAccess.hasManualDispatchFunnel(side) ? launchFunnelHandlers.get(side) : null;
 			}
 			if (beltAccess.hasManualDispatchFunnel(side)) {
-				return packageFunnelHandlers.get(side);
+				return packageFunnelHandler;
 			}
 		}
 		return inventory.combinedHandler();
 	}
 
-	void clearPendingHudEntries() {
-		pendingHudEntries.clear();
+	void clearPendingDispatches() {
+		pendingDispatches.clear();
 	}
 
 	private IItemHandler createLaunchFunnelHandler(Direction side) {
@@ -93,14 +95,10 @@ final class PhantomPortDispatchAccess {
 					return ItemStack.EMPTY;
 				}
 
-				ItemStack extracted = candidate.phantomStack().copy();
-				extracted.setCount(1);
+				ItemStack extracted = candidate.phantomStack();
 
 				if (!simulate) {
-					if (!inventory.hasUsableCarrier()) {
-						return ItemStack.EMPTY;
-					}
-					ItemStack storedCarrier = inventory.extractOneCarrier(false);
+					ItemStack storedCarrier = inventory.extractOneCarrier();
 					if (storedCarrier.isEmpty()) {
 						return ItemStack.EMPTY;
 					}
@@ -109,20 +107,18 @@ final class PhantomPortDispatchAccess {
 						inventory.returnCarrier(storedCarrier);
 						return ItemStack.EMPTY;
 					}
+					if (!inventory.hasCarrier())
+						port.cancelPendingReturns();
 					if (candidate.target() instanceof AirCourierTarget.PlayerTarget playerTarget) {
 						ServerPlayer player = port.getLevel() instanceof ServerLevel sl
 							? sl.getServer().getPlayerList().getPlayer(playerTarget.playerId())
 							: null;
-						if (player != null) {
-							UUID hudEntryId = candidate.hudEntryId();
-							if (hudEntryId != null) {
-								MiniPhantomItem.setHudEntryId(extracted, hudEntryId);
-								AirCourierHudSync.onCourierPreparing(player,
-									MiniPhantomItem.copyCargoPackage(extracted), hudEntryId);
-							}
+						UUID hudEntryId = MiniPhantomItem.getHudEntryId(extracted);
+						if (player != null && hudEntryId != null) {
+							AirCourierHudSync.onCourierPreparing(player, MiniPhantomItem.copyCargoPackage(extracted),
+								hudEntryId);
 						}
 					}
-					pendingHudEntries.remove(candidate.packageSlot());
 				}
 
 				return extracted;
@@ -140,7 +136,7 @@ final class PhantomPortDispatchAccess {
 		};
 	}
 
-	private IItemHandler createPackageFunnelHandler(Direction side) {
+	private IItemHandler createPackageFunnelHandler() {
 		return new IItemHandler() {
 			@Override
 			public int getSlots() {
@@ -169,8 +165,7 @@ final class PhantomPortDispatchAccess {
 				if (packageSlot < 0) {
 					return ItemStack.EMPTY;
 				}
-				ItemStack extracted = port.inventory.extractItem(packageSlot, amount, simulate);
-				return extracted;
+				return port.inventory.extractItem(packageSlot, amount, simulate);
 			}
 
 			@Override
@@ -190,7 +185,7 @@ final class PhantomPortDispatchAccess {
 		if (candidate == null) {
 			return ItemStack.EMPTY;
 		}
-		return candidate.phantomStack().copy();
+		return candidate.phantomStack();
 	}
 
 	private @Nullable DispatchCandidate findDispatchCandidate(Direction side) {
@@ -200,7 +195,7 @@ final class PhantomPortDispatchAccess {
 		if (!beltAccess.canDispatchThrough(side)) {
 			return null;
 		}
-		if (!inventory.hasUsableCarrier()) {
+		if (!inventory.hasCarrier()) {
 			return null;
 		}
 
@@ -227,24 +222,45 @@ final class PhantomPortDispatchAccess {
 			ItemStack phantomStack = MiniPhantomItem.createLoadedWithHeading(singlePackage, headingAngle);
 			MiniPhantomItem.setReturnTarget(phantomStack, serverLevel.dimension(), port.getBlockPos());
 
-			UUID hudEntryId = null;
-			if (target instanceof AirCourierTarget.PlayerTarget) {
-				hudEntryId = getOrCreatePendingHudEntryId(slot, singlePackage);
-				MiniPhantomItem.setHudEntryId(phantomStack, hudEntryId);
-			}
-			return new DispatchCandidate(slot, phantomStack, target, hudEntryId);
+			UUID id = getOrCreateDispatchId(slot, singlePackage, target);
+			if (!lockDispatch(serverLevel, phantomStack, target, id))
+				continue;
+			if (target instanceof AirCourierTarget.PlayerTarget)
+				MiniPhantomItem.setHudEntryId(phantomStack, id);
+			return new DispatchCandidate(slot, phantomStack, target);
 		}
 		return null;
 	}
 
-	private UUID getOrCreatePendingHudEntryId(int slot, ItemStack packageStack) {
-		PendingHudEntry existing = pendingHudEntries.get(slot);
-		if (existing != null && ItemStack.matches(existing.packageSnapshot(), packageStack)) {
-			return existing.hudEntryId();
+	private boolean lockDispatch(ServerLevel level, ItemStack stack, AirCourierTarget target, UUID id) {
+		PhantomPortReference destination = null;
+		UUID playerId = null;
+		switch (target) {
+			case AirCourierTarget.PhantomPortTarget portTarget -> {
+				ServerLevel targetLevel = level.getServer().getLevel(portTarget.dimension());
+				PhantomPortBlockEntity targetPort =
+					AirCourierDeliveryService.resolveTargetPhantomPort(targetLevel, portTarget.pos());
+				if (targetPort == null || targetLevel == null)
+					return false;
+				destination = targetPort.courierReference(targetLevel);
+			}
+			case AirCourierTarget.PlayerTarget playerTarget -> playerId = playerTarget.playerId();
 		}
-		UUID newId = UUID.randomUUID();
-		pendingHudEntries.put(slot, new PendingHudEntry(newId, packageStack.copy()));
-		return newId;
+		stack.set(AllDataComponents.MINI_PHANTOM_DISPATCH.get(),
+			new MiniPhantomDispatch(id, port.courierReference(level), target.dimension(),
+				Optional.ofNullable(destination), Optional.ofNullable(playerId)));
+		return true;
+	}
+
+	private UUID getOrCreateDispatchId(int slot, ItemStack packageStack, AirCourierTarget target) {
+		PendingDispatch existing = pendingDispatches.get(slot);
+		if (existing != null && ItemStack.matches(existing.packageSnapshot(), packageStack)
+			&& existing.target().equals(target)) {
+			return existing.id();
+		}
+		UUID id = UUID.randomUUID();
+		pendingDispatches.put(slot, new PendingDispatch(id, packageStack.copy(), target));
+		return id;
 	}
 
 	private @NotNull ItemStack getLocalPackageStack() {
@@ -272,10 +288,9 @@ final class PhantomPortDispatchAccess {
 		return -1;
 	}
 
-	private record PendingHudEntry(UUID hudEntryId, ItemStack packageSnapshot) {
+	private record PendingDispatch(UUID id, ItemStack packageSnapshot, AirCourierTarget target) {
 	}
 
-	private record DispatchCandidate(int packageSlot, ItemStack phantomStack,
-		@Nullable AirCourierTarget target, @Nullable UUID hudEntryId) {
+	private record DispatchCandidate(int packageSlot, ItemStack phantomStack, AirCourierTarget target) {
 	}
 }

@@ -96,7 +96,8 @@ configurations {
 }
 
 dependencies {
-    api("dev.ryanhcode.sable:sable-common-${project.minecraft_version}:${project.sable_version}")
+    compileOnly("dev.ryanhcode.sable:sable-common-${project.minecraft_version}:${project.sable_version}")
+    localRuntime("maven.modrinth:T9PomCSv:${project.sable_neoforge_version_id}")
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
@@ -115,7 +116,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
     var replaceProperties = [
         minecraft_version           : minecraft_version,
         minecraft_version_range     : minecraft_version_range,
-        neo_version                 : neo_version,
+        neo_version_range           : neo_version_range,
         loader_version_range        : loader_version_range,
         mod_id                      : mod_id,
         mod_name                    : mod_name,

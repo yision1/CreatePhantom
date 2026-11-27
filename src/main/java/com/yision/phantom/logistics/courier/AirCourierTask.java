@@ -1,10 +1,15 @@
 package com.yision.phantom.logistics.courier;
 
+import java.util.Comparator;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.yision.phantom.block.phantomport.PhantomPortBlockEntity;
+import com.yision.phantom.block.phantomport.PhantomPortLocations;
+import com.yision.phantom.block.phantomport.PhantomPortReference;
+import com.yision.phantom.compat.sable.SableCompat;
 import com.yision.phantom.entity.courier.AirCourierEntity;
 import com.yision.phantom.logistics.courier.flight.AirCourierFlightEstimate;
 import com.yision.phantom.logistics.courier.flight.AirCourierFlightMath;
@@ -18,13 +23,16 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -37,6 +45,12 @@ public final class AirCourierTask {
 	public static final double PLAYER_REENTRY_HEIGHT = 4.0;
 	public static final int PLAYER_REACQUIRE_COOLDOWN_TICKS = 40;
 	public static final int RECOVERY_WATCHDOG_TICKS = 2400;
+
+	private static final int WAIT_RETRY_TICKS = 20;
+	private static final double PORT_LOAD_DISTANCE = 48.0;
+	private static final int PORT_TICKET_RADIUS = 2;
+	private static final TicketType<UUID> PORT_TICKET =
+		TicketType.create("createphantom_delivery", Comparator.<UUID>naturalOrder());
 
 	private static final AirCourierFlightProfile FLIGHT = AirCourierFlightProfile.DEFAULT;
 
@@ -63,6 +77,13 @@ public final class AirCourierTask {
 	private boolean teleportedNearTarget;
 	private State state = State.ACTIVE;
 	private boolean packageDropped;
+	private boolean dropAtPort;
+	private @Nullable PhantomPortReference sourcePort;
+	private @Nullable PhantomPortReference targetPort;
+	private @Nullable Vec3 lastTargetPosition;
+	private @Nullable ServerLevel ticketLevel;
+	private @Nullable ChunkPos ticketChunk;
+	private int nextAttemptTick;
 
 	private @Nullable Vec3 takeoffTarget;
 	private @Nullable Vec3 takeoffStart;
@@ -145,21 +166,40 @@ public final class AirCourierTask {
 			spawnPos, launchMotion, launchDirection);
 	}
 
-	public void tick(MinecraftServer server) {
-		if (removed)
-			return;
+	public void setPortReferences(@Nullable PhantomPortReference source, @Nullable PhantomPortReference target) {
+		sourcePort = source;
+		targetPort = target;
+	}
+
+	public boolean tick(MinecraftServer server) {
+		int tick = server.getTickCount();
+		if (removed || (!isActive() && nextAttemptTick > tick))
+			return false;
+		boolean changed = advance(server);
+		nextAttemptTick = isActive() || (state == State.TARGET_UNLOADED && ticketLevel != null)
+			? tick : tick + WAIT_RETRY_TICKS;
+		return changed;
+	}
+
+	private boolean advance(MinecraftServer server) {
 		if (state == State.DROP_PENDING) {
+			boolean hadDroppedPackage = packageDropped;
 			tickDrop(server);
-			return;
+			return removed || packageDropped != hadDroppedPackage;
 		}
+		State previousState = state;
+		PhantomPortReference previousPort = targetPort;
+		Vec3 previousTargetPosition = lastTargetPosition;
 		FlightTarget target = prepareFlightTarget(server);
-		if (target == null)
-			return;
+		if (target == null) {
+			return state != previousState || !Objects.equals(previousPort, targetPort)
+				|| !Objects.equals(previousTargetPosition, lastTargetPosition);
+		}
 		deliveryElapsedTicks++;
 		if (deliveryElapsedTicks > RECOVERY_WATCHDOG_TICKS
 			&& !flightTracking.usesDeliveryLimit(target.playerTarget())) {
-			doFail(server);
-			return;
+			deliveryElapsedTicks = 0;
+			teleportNearTarget(target);
 		}
 		boolean reposition = flightTracking.sample(
 			target.player() != null ? target.player().position() : target.landingTarget(),
@@ -169,9 +209,9 @@ public final class AirCourierTask {
 		if (flightTracking.shouldApproach(deliveryElapsedTicks, target.playerTarget())) {
 			flightTracking.beginFinalApproach(position, target.landingTarget());
 			tickFinalApproach(server, target);
-			return;
+			return true;
 		}
-		if (reposition || shouldTeleportNearTarget(target)) {
+		if (reposition || server.getLevel(currentDimension) == null || shouldTeleportNearTarget(target)) {
 			teleportNearTarget(target);
 		}
 		Vec3 tickStartPosition = position;
@@ -183,46 +223,165 @@ public final class AirCourierTask {
 		}
 		if (isActive())
 			previousFlightPosition = tickStartPosition;
+		return true;
 	}
 
-	public void prepareForDispatch(MinecraftServer server) {
-		if (!removed && state != State.DROP_PENDING)
-			prepareFlightTarget(server);
+	public boolean prepareForDispatch(MinecraftServer server) {
+		if (sourcePort == null && sourcePhantomPortPos != null && sourceDimension != null) {
+			ServerLevel level = server.getLevel(sourceDimension);
+			PhantomPortBlockEntity port =
+				AirCourierDeliveryService.resolveTargetPhantomPort(level, sourcePhantomPortPos);
+			if (level != null && port != null)
+				sourcePort = port.courierReference(level);
+		}
+		refreshPortReference(server);
+		FlightTarget target = resolveFlightTarget(server);
+		if (target != null)
+			rememberTarget(target);
+		else if (targetPort != null)
+			lastTargetPosition = targetPort.landing();
+
+		ServerLevel origin = server.getLevel(currentDimension);
+		return origin != null && lastTargetPosition != null
+			&& (mission != AirCourierEntity.Mission.PACKAGE_TO_AIRPORT
+				&& mission != AirCourierEntity.Mission.PACKAGE_TO_PLAYER
+				|| AirCourierDimensionRules.canTarget(origin, targetDimension));
 	}
 
 	private @Nullable FlightTarget prepareFlightTarget(MinecraftServer server) {
-		AirCourierDeliveryService.TargetState targetState = AirCourierDeliveryService.targetState(
-			server, mission, targetDimension, targetPhantomPortPos, targetPlayerId, box);
-		if (targetState == AirCourierDeliveryService.TargetState.PLAYER_OFFLINE) {
-			pauseForPlayer(server);
+		if (targetPhantomPortPos != null)
+			return preparePortTarget(server);
+
+		FlightTarget target = resolveFlightTarget(server);
+		if (target == null) {
+			if (isActive())
+				pause(State.PLAYER_OFFLINE);
 			return null;
 		}
-		ServerLevel currentLevel = server.getLevel(currentDimension);
-		FlightTarget target = targetState == AirCourierDeliveryService.TargetState.AVAILABLE
-			? resolveFlightTarget(server)
-			: null;
-		if (target == null || currentLevel == null || !isFlightTargetAllowed(currentLevel, target)) {
-			doFail(server);
-			return null;
-		}
-		if (state == State.PLAYER_OFFLINE || phase == AirCourierEntity.Phase.WAITING) {
+		rememberTarget(target);
+		if (state != State.ACTIVE || phase == AirCourierEntity.Phase.WAITING) {
 			state = State.ACTIVE;
-			deliveryElapsedTicks = 0;
 			teleportedNearTarget = false;
 			flightTracking.reset();
-			clearCaches();
 			beginCruise();
 		}
 		return target;
 	}
 
-	public void pauseForPlayer(MinecraftServer server) {
-		if (removed || state != State.ACTIVE)
+	private @Nullable FlightTarget preparePortTarget(MinecraftServer server) {
+		refreshPortReference(server);
+		ServerLevel level = server.getLevel(targetDimension);
+		if (level == null) {
+			pause(State.TARGET_UNLOADED);
+			releaseChunkTicket();
+			return null;
+		}
+		boolean sablePlot = isSablePort(level);
+		FlightTarget target = sablePlot && isSablePortUnavailable(level) ? null
+			: resolvePortFlightTarget(level, sablePlot);
+		if (target == null) {
+			pause(State.TARGET_UNLOADED);
+			releaseChunkTicket();
+			return null;
+		}
+		rememberTarget(target);
+		boolean nearPort = currentDimension.equals(targetDimension)
+			&& position.closerThan(target.landingTarget(), PORT_LOAD_DISTANCE);
+		if (!sablePlot && nearPort) {
+			loadChunk(level, targetPhantomPortPos);
+			if (!AirCourierDeliveryService.isPortChunkLoaded(level, targetPhantomPortPos)) {
+				pause(State.TARGET_UNLOADED);
+				return null;
+			}
+		} else {
+			releaseChunkTicket();
+		}
+		if (state == State.TARGET_UNLOADED) {
+			state = State.ACTIVE;
+			flightTracking.reset();
+			if (phase != AirCourierEntity.Phase.TAKEOFF)
+				beginCruise();
+		}
+		return target;
+	}
+
+	private void rememberTarget(FlightTarget target) {
+		targetDimension = target.level().dimension();
+		lastTargetPosition = target.landingTarget();
+	}
+
+	private void refreshPortReference(MinecraftServer server) {
+		if (targetPhantomPortPos == null)
 			return;
-		setLandingOpen(resolveLoadedTargetPhantomPort(server.getLevel(targetDimension)), false);
-		state = State.PLAYER_OFFLINE;
+		if (targetPort == null) {
+			ServerLevel level = server.getLevel(targetDimension);
+			PhantomPortBlockEntity port = resolveLoadedTargetPhantomPort(level);
+			if (port != null && level != null)
+				targetPort = port.courierReference(level);
+		}
+		if (targetPort != null) {
+			PhantomPortReference latest = PhantomPortLocations.get(server).latest(targetPort);
+			if (!targetPort.location().equals(latest.location())
+				|| !targetPort.subLevelId().equals(latest.subLevelId())) {
+				flightTracking.reset();
+				previousFlightPosition = null;
+				deliveryElapsedTicks = 0;
+				teleportedNearTarget = false;
+				setLandingOpen(resolveLoadedTargetPhantomPort(server.getLevel(targetDimension)), false);
+				if (phase != AirCourierEntity.Phase.TAKEOFF)
+					beginCruise();
+			}
+			targetPort = latest;
+			targetPhantomPortPos = latest.pos();
+			targetDimension = latest.dimension();
+		}
+	}
+
+	private boolean isSablePort(ServerLevel level) {
+		return (targetPort != null && targetPort.subLevelId().isPresent())
+			|| SableCompat.isSubLevelPlot(level, targetPhantomPortPos);
+	}
+
+	private boolean isSablePortUnavailable(ServerLevel level) {
+		return !SableCompat.isLoaded() || (SableCompat.subLevelId(level, targetPhantomPortPos).isEmpty()
+			&& SableCompat.isOccupiedPlot(level, targetPhantomPortPos));
+	}
+
+	private void pause(State pausedState) {
+		if (state == pausedState)
+			return;
+		state = pausedState;
 		motion = Vec3.ZERO;
 		clearCaches();
+	}
+
+	private void loadChunk(ServerLevel level, BlockPos pos) {
+		ChunkPos chunk = new ChunkPos(pos);
+		if (level == ticketLevel && chunk.equals(ticketChunk))
+			return;
+		releaseChunkTicket();
+		level.getChunkSource().addRegionTicket(PORT_TICKET, chunk, PORT_TICKET_RADIUS, id);
+		ticketLevel = level;
+		ticketChunk = chunk;
+	}
+
+	void releaseChunkTicket() {
+		if (ticketLevel != null && ticketChunk != null)
+			ticketLevel.getChunkSource().removeRegionTicket(PORT_TICKET, ticketChunk, PORT_TICKET_RADIUS, id);
+		ticketLevel = null;
+		ticketChunk = null;
+	}
+
+	void wakeForPlayer(UUID playerId) {
+		if (state == State.PLAYER_OFFLINE && playerId.equals(targetPlayerId))
+			nextAttemptTick = 0;
+	}
+
+	boolean pauseForPlayer(UUID playerId) {
+		if (!isActive() || targetPhantomPortPos != null || !playerId.equals(targetPlayerId))
+			return false;
+		pause(State.PLAYER_OFFLINE);
+		return true;
 	}
 
 	private void tickTakeoff(FlightTarget target) {
@@ -313,8 +472,7 @@ public final class AirCourierTask {
 		position = flightTracking.finalApproachPosition(target.landingTarget(), deliveryElapsedTicks);
 		motion = position.subtract(start);
 		previousFlightPosition = null;
-		if (deliveryElapsedTicks >= AirCourierFlightTracking.DELIVERY_LIMIT_TICKS
-			|| hasReachedTarget(target, null, Vec3.ZERO)) {
+		if (hasReachedTarget(target, null, Vec3.ZERO)) {
 			doFinishDelivery(server, target.level());
 		}
 	}
@@ -375,14 +533,9 @@ public final class AirCourierTask {
 			position.distanceTo(target.landingTarget()), target.completionDistance());
 	}
 
-	private boolean isFlightTargetAllowed(ServerLevel currentLevel, FlightTarget target) {
-		return (mission != AirCourierEntity.Mission.PACKAGE_TO_AIRPORT
-			&& mission != AirCourierEntity.Mission.PACKAGE_TO_PLAYER)
-			|| AirCourierDimensionRules.canTarget(currentLevel, target.level().dimension());
-	}
-
 	private @Nullable PhantomPortBlockEntity resolveLoadedTargetPhantomPort(@Nullable ServerLevel level) {
-		return AirCourierDeliveryService.resolveTargetPhantomPort(level, targetPhantomPortPos);
+		PhantomPortBlockEntity port = AirCourierDeliveryService.resolveTargetPhantomPort(level, targetPhantomPortPos);
+		return port != null && (targetPort == null || port.matchesCourierPort(targetPort.id())) ? port : null;
 	}
 
 	private void beginCruise() {
@@ -393,48 +546,76 @@ public final class AirCourierTask {
 	}
 
 	private void doFinishDelivery(MinecraftServer server, @Nullable ServerLevel level) {
-		if (!isActive())
+		if (!isActive() || level == null)
 			return;
-		if (level == null) {
-			doFail(server);
-			return;
+
+		PhantomPortBlockEntity port = resolveLoadedTargetPhantomPort(level);
+		setLandingOpen(port, false);
+		if (targetPhantomPortPos != null) {
+			if (isSablePort(level) ? isSablePortUnavailable(level)
+				: !AirCourierDeliveryService.isPortChunkLoaded(level, targetPhantomPortPos)) {
+				pause(State.TARGET_UNLOADED);
+				return;
+			}
+			if (port == null) {
+				dropAtTarget(server, level);
+				return;
+			}
 		}
 
-		setLandingOpen(resolveLoadedTargetPhantomPort(server.getLevel(targetDimension)), false);
-
 		boolean delivered = AirCourierDeliveryService.finishDelivery(
-			server, box, mission, sourceDimension, sourcePhantomPortPos, sourcePlayerId,
-			targetDimension, targetPhantomPortPos, targetPlayerId, hudPlayerId, hudEntryId);
+			server, box, mission, sourceDimension, sourcePhantomPortPos, sourcePort, sourcePlayerId,
+			port, targetPlayerId, hudPlayerId, hudEntryId);
 
 		if (!delivered) {
-			if (prepareFlightTarget(server) != null)
-				doFail(server);
+			if (targetPhantomPortPos != null)
+				dropAtTarget(server, level);
 			return;
 		}
 		AirCourierDeliveryService.spawnDeliveryParticles(level, position);
 		if (mission == AirCourierEntity.Mission.PACKAGE_TO_PLAYER && !box.isEmpty()) {
-			startCarrierReturn(server);
+			if (sourcePhantomPortPos != null && sourceDimension != null || sourcePlayerId != null) {
+				startCarrierReturn(server);
+			} else {
+				box = ItemStack.EMPTY;
+				beginDropAtTarget(level);
+				tickDrop(server);
+			}
 			return;
 		}
 		markRemoved();
 	}
 
-	private void doFail(MinecraftServer server) {
-		if (removed || state == State.DROP_PENDING)
-			return;
-		setLandingOpen(resolveLoadedTargetPhantomPort(server.getLevel(targetDimension)), false);
-		state = State.DROP_PENDING;
-		motion = Vec3.ZERO;
-		clearCaches();
+	private void dropAtTarget(MinecraftServer server, ServerLevel level) {
+		beginDropAtTarget(level);
 		AirCourierDeliveryService.notifyFailure(server, box, targetPlayerId, hudPlayerId,
 			hudEntryId != null ? hudEntryId : id);
 		tickDrop(server);
+	}
+
+	private void beginDropAtTarget(ServerLevel level) {
+		if (lastTargetPosition != null)
+			position = lastTargetPosition;
+		currentDimension = level.dimension();
+		dropAtPort = true;
+		state = State.DROP_PENDING;
+		motion = Vec3.ZERO;
+		clearCaches();
 	}
 
 	private void tickDrop(MinecraftServer server) {
 		ServerLevel level = server.getLevel(currentDimension);
 		if (level == null)
 			return;
+		if (targetPort != null && targetPort.subLevelId().isPresent() && isSablePortUnavailable(level)) {
+			releaseChunkTicket();
+			return;
+		}
+		BlockPos dropPos = BlockPos.containing(position);
+		if (!level.isPositionEntityTicking(dropPos)) {
+			loadChunk(level, dropPos);
+			return;
+		}
 		if (!packageDropped) {
 			packageDropped = mission == AirCourierEntity.Mission.CARRIER_RETURN
 				|| mission == AirCourierEntity.Mission.CARRIER_RETURN_TO_PLAYER
@@ -451,6 +632,7 @@ public final class AirCourierTask {
 			targetPhantomPortPos = sourcePhantomPortPos;
 			targetDimension = sourceDimension;
 			targetPlayerId = null;
+			targetPort = sourcePort;
 			resetForReturn(AirCourierEntity.Mission.CARRIER_RETURN);
 		} else {
 			targetPhantomPortPos = null;
@@ -464,6 +646,7 @@ public final class AirCourierTask {
 	}
 
 	private void resetForReturn(AirCourierEntity.Mission nextMission) {
+		releaseChunkTicket();
 		box = ItemStack.EMPTY;
 		hudPlayerId = null;
 		hudEntryId = null;
@@ -474,6 +657,8 @@ public final class AirCourierTask {
 		teleportedNearTarget = false;
 		state = State.ACTIVE;
 		packageDropped = false;
+		dropAtPort = false;
+		lastTargetPosition = null;
 		flightTracking.reset();
 		clearCaches();
 		takeoffTarget = null;
@@ -543,23 +728,28 @@ public final class AirCourierTask {
 	private @Nullable FlightTarget resolveFlightTarget(MinecraftServer server) {
 		if (targetPhantomPortPos != null) {
 			ServerLevel level = server.getLevel(targetDimension);
-			if (level == null) {
-				return null;
-			}
-			return new FlightTarget(level, null,
-				AirCourierFlightTargets.cruiseTarget(FLIGHT, level, targetPhantomPortPos),
-				AirCourierFlightTargets.landingTarget(FLIGHT, level, targetPhantomPortPos),
-				FLIGHT.phantomPortCompletionDistance());
+			return level == null ? null : resolvePortFlightTarget(level, isSablePort(level));
 		}
-
 		ServerPlayer player = AirCourierDeliveryService.resolvePlayer(server, targetPlayerId);
-		if (player == null) {
+		if (player == null)
 			return null;
-		}
+		Vec3 landing = AirCourierFlightTargets.playerDeliveryTarget(FLIGHT, player);
 		return new FlightTarget(player.serverLevel(), player,
-			AirCourierFlightTargets.cruiseTarget(FLIGHT, null, player),
-			AirCourierFlightTargets.landingTarget(FLIGHT, null, player),
-			FLIGHT.playerCompletionDistance());
+			landing.add(0, FLIGHT.playerCruiseHeight() - FLIGHT.playerTargetHeight(), 0),
+			landing, FLIGHT.playerCompletionDistance());
+	}
+
+	private @Nullable FlightTarget resolvePortFlightTarget(ServerLevel level, boolean sablePlot) {
+		if (sablePlot && resolveLoadedTargetPhantomPort(level) == null) {
+			Vec3 landing = targetPort != null ? targetPort.landing() : lastTargetPosition;
+			if (landing == null)
+				return null;
+			Vec3 cruise = landing.add(0, FLIGHT.phantomPortCruiseHeight() - FLIGHT.phantomPortLandingHeight(), 0);
+			return new FlightTarget(level, null, cruise, landing, FLIGHT.phantomPortCompletionDistance());
+		}
+		Vec3 landing = AirCourierFlightTargets.landingTarget(FLIGHT, level, targetPhantomPortPos);
+		Vec3 cruise = AirCourierFlightTargets.cruiseTarget(FLIGHT, level, targetPhantomPortPos);
+		return new FlightTarget(level, null, cruise, landing, FLIGHT.phantomPortCompletionDistance());
 	}
 
 	public AirCourierTaskSnapshot snapshot(MinecraftServer server) {
@@ -655,7 +845,7 @@ public final class AirCourierTask {
 	private AirCourierHudStatus getHudStatus() {
 		if (state == State.DROP_PENDING)
 			return AirCourierHudStatus.FAILED;
-		if (state == State.PLAYER_OFFLINE)
+		if (state == State.PLAYER_OFFLINE || state == State.TARGET_UNLOADED)
 			return AirCourierHudStatus.PREPARING;
 		if (mission == AirCourierEntity.Mission.CARRIER_RETURN_TO_PLAYER) {
 			return AirCourierHudStatus.RETURNING;
@@ -677,14 +867,6 @@ public final class AirCourierTask {
 
 	public ResourceKey<Level> currentDimension() {
 		return currentDimension;
-	}
-
-	public @Nullable BlockPos targetPhantomPortPos() {
-		return targetPhantomPortPos;
-	}
-
-	public @Nullable UUID targetPlayerId() {
-		return targetPlayerId;
 	}
 
 	public @Nullable UUID hudEntryId() {
@@ -720,6 +902,7 @@ public final class AirCourierTask {
 	}
 
 	private void markRemoved() {
+		releaseChunkTicket();
 		removed = true;
 	}
 
@@ -762,6 +945,15 @@ public final class AirCourierTask {
 		tag.putBoolean("TeleportedNearTarget", teleportedNearTarget);
 		tag.putString("State", state.name());
 		tag.putBoolean("PackageDropped", packageDropped);
+		tag.putBoolean("DropAtPort", dropAtPort);
+		if (lastTargetPosition != null)
+			tag.put("LastTargetPosition", vecToTag(lastTargetPosition));
+		if (sourcePort != null)
+			PhantomPortReference.CODEC.encodeStart(NbtOps.INSTANCE, sourcePort)
+				.result().ifPresent(value -> tag.put("SourcePort", value));
+		if (targetPort != null)
+			PhantomPortReference.CODEC.encodeStart(NbtOps.INSTANCE, targetPort)
+				.result().ifPresent(value -> tag.put("TargetPort", value));
 		tag.put("FlightTracking", flightTracking.save());
 		if (takeoffTarget != null)
 			tag.put("TakeoffTarget", vecToTag(takeoffTarget));
@@ -809,6 +1001,17 @@ public final class AirCourierTask {
 		task.teleportedNearTarget = tag.getBoolean("TeleportedNearTarget");
 		task.state = tag.contains("State") ? State.valueOf(tag.getString("State")) : State.ACTIVE;
 		task.packageDropped = tag.getBoolean("PackageDropped");
+		task.dropAtPort = tag.getBoolean("DropAtPort");
+		if (tag.contains("LastTargetPosition"))
+			task.lastTargetPosition = vecFromTag(tag, "LastTargetPosition");
+		if (task.state == State.DROP_PENDING && !task.dropAtPort && !task.packageDropped)
+			task.state = State.ACTIVE;
+		if (tag.contains("SourcePort"))
+			task.sourcePort = PhantomPortReference.CODEC.parse(NbtOps.INSTANCE, tag.get("SourcePort"))
+				.result().orElse(null);
+		if (tag.contains("TargetPort"))
+			task.targetPort = PhantomPortReference.CODEC.parse(NbtOps.INSTANCE, tag.get("TargetPort"))
+				.result().orElse(null);
 		task.flightTracking.load(tag.getCompound("FlightTracking"));
 		task.takeoffTarget = tag.contains("TakeoffTarget") ? vecFromTag(tag, "TakeoffTarget") : null;
 		task.takeoffStart = tag.contains("TakeoffStart") ? vecFromTag(tag, "TakeoffStart") : null;
@@ -831,7 +1034,7 @@ public final class AirCourierTask {
 	}
 
 	private enum State {
-		ACTIVE, PLAYER_OFFLINE, DROP_PENDING
+		ACTIVE, PLAYER_OFFLINE, TARGET_UNLOADED, DROP_PENDING
 	}
 
 	public record AirCourierTaskSnapshot(

@@ -36,14 +36,11 @@ public class MiniPhantomScreen extends AbstractSimiContainerScreen<MiniPhantomMe
 	private static final int GUI_HEIGHT = 120;
 
 	private AddressSuggestionEditBox addressBox;
-	private IconButton confirmButton;
-	private final Inventory playerInventory;
 	private List<Rect2i> extraAreas = List.of();
 	private ItemStack lastClipboardStack = ItemStack.EMPTY;
 
 	public MiniPhantomScreen(MiniPhantomMenu menu, Inventory inventory, Component title) {
 		super(menu, inventory, title);
-		this.playerInventory = inventory;
 	}
 
 	@Override
@@ -56,14 +53,9 @@ public class MiniPhantomScreen extends AbstractSimiContainerScreen<MiniPhantomMe
 		int y = getGuiTop();
 		extraAreas = List.of(new Rect2i(x + GUI_WIDTH, y + GUI_HEIGHT - 50, 70, 60));
 
-		String previousAddress = addressBox == null ? menu.initialAddress : addressBox.getValue();
-		addressBox = new AddressSuggestionEditBox(this, new NoShadowFontWrapper(font), x + 55, y + 68, 110, 10, false,
-			null, clipboardAddresses(), false);
-		addressBox.setValue(previousAddress);
-		addressBox.setTextColor(0x3D3C48);
-		addRenderableWidget(addressBox);
+		addAddressBox(addressBox == null ? menu.initialAddress : addressBox.getValue());
 
-		confirmButton = new IconButton(x + GUI_WIDTH - 30, y + GUI_HEIGHT - 25, AllIcons.I_CONFIRM);
+		IconButton confirmButton = new IconButton(x + GUI_WIDTH - 30, y + GUI_HEIGHT - 25, AllIcons.I_CONFIRM);
 		confirmButton.withCallback(
 			() -> CatnipServices.NETWORK.sendToServer(new MiniPhantomConfirmPacket(addressBox.getValue())));
 		addRenderableWidget(confirmButton);
@@ -87,13 +79,16 @@ public class MiniPhantomScreen extends AbstractSimiContainerScreen<MiniPhantomMe
 
 		String previousValue = addressBox.getValue();
 		removeWidget(addressBox);
+		addAddressBox(previousValue);
+	}
 
-		int x = getGuiLeft();
-		int y = getGuiTop();
-		addressBox = new AddressSuggestionEditBox(this, new NoShadowFontWrapper(font), x + 55, y + 68, 110, 10, false,
-			null, clipboardAddresses(), false);
-		addressBox.setValue(previousValue);
+	private void addAddressBox(String value) {
+		addressBox = new AddressSuggestionEditBox(this, new NoShadowFontWrapper(font), getGuiLeft() + 55,
+			getGuiTop() + 68, 110, 10, false, null, clipboardAddresses(), false);
+		addressBox.setValue(value);
 		addressBox.setTextColor(0x3D3C48);
+		addressBox.setHint(CreateLang.translate("gui.stock_keeper.package_address")
+			.style(ChatFormatting.ITALIC).component());
 		addRenderableWidget(addressBox);
 	}
 
@@ -157,10 +152,6 @@ public class MiniPhantomScreen extends AbstractSimiContainerScreen<MiniPhantomMe
 			.of(new ItemStack(menu.openedStack.getItem())).<GuiGameElement.GuiRenderBuilder>at(x + 245, y + 80, 0)
 			.scale(3)
 			.render(graphics);
-
-		if (addressBox.getValue().isBlank() && !addressBox.isFocused())
-			graphics.drawString(font, CreateLang.translate("gui.stock_keeper.package_address")
-				.style(ChatFormatting.ITALIC).component(), addressBox.getX(), addressBox.getY(), 0x8A8794, false);
 	}
 
 	@Override

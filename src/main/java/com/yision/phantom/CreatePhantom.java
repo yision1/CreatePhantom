@@ -26,12 +26,15 @@ import com.yision.phantom.registry.AllMenuTypes;
 import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.CreativeModeTab;
 
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerRespawnEvent;
 
 @Mod(CreatePhantom.MODID)
 public class CreatePhantom {
@@ -72,9 +75,17 @@ public class CreatePhantom {
 			PhantomPortTargetRegistry.clearAll();
 			TunablePortableTickerSession.clearAll();
 		});
+		NeoForge.EVENT_BUS.addListener((PlayerLoggedInEvent event) -> {
+			if (event.getEntity() instanceof ServerPlayer player)
+				AirCourierTaskManager.onPlayerAvailable(player);
+		});
+		NeoForge.EVENT_BUS.addListener((PlayerRespawnEvent event) -> {
+			if (event.getEntity() instanceof ServerPlayer player)
+				AirCourierTaskManager.onPlayerAvailable(player);
+		});
 		NeoForge.EVENT_BUS.addListener(
 			(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) -> {
-				if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+				if (event.getEntity() instanceof ServerPlayer player) {
 					AirCourierTaskManager.onPlayerLoggedOut(player);
 					AirCourierHudSync.clearPlayer(player);
 					TunablePortableTickerSession.clearPlayer(player);

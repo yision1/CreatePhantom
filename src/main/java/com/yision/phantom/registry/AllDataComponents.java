@@ -8,7 +8,9 @@ import java.util.function.Supplier;
 
 import com.mojang.serialization.Codec;
 import com.yision.phantom.CreatePhantom;
+import com.yision.phantom.block.phantomport.PhantomPortReference;
 import com.yision.phantom.item.miniphantom.MiniPhantomCargo;
+import com.yision.phantom.item.miniphantom.MiniPhantomDispatch;
 import com.yision.phantom.item.miniphantom.MiniPhantomReturnTarget;
 
 import net.createmod.catnip.codecs.stream.CatnipStreamCodecBuilders;
@@ -31,6 +33,12 @@ public final class AllDataComponents {
 		.registerComponentType("mini_phantom_cargo",
 			builder -> builder.persistent(MiniPhantomCargo.CODEC)
 				.networkSynchronized(MiniPhantomCargo.STREAM_CODEC));
+
+	public static final Supplier<DataComponentType<MiniPhantomDispatch>> MINI_PHANTOM_DISPATCH = REGISTER
+		.registerComponentType("mini_phantom_dispatch", builder -> builder.persistent(MiniPhantomDispatch.CODEC));
+
+	public static final Supplier<DataComponentType<PhantomPortReference>> MINI_PHANTOM_RETURN_PORT = REGISTER
+		.registerComponentType("mini_phantom_return_port", builder -> builder.persistent(PhantomPortReference.CODEC));
 
 	public static final Supplier<DataComponentType<Integer>> MINI_PHANTOM_HEADING = REGISTER.registerComponentType(
 		"mini_phantom_heading",
@@ -68,8 +76,8 @@ public final class AllDataComponents {
 			builder -> builder.persistent(Codec.STRING.listOf())
 				.networkSynchronized(CatnipStreamCodecBuilders.list(ByteBufCodecs.STRING_UTF8)));
 
-	public static final Supplier<DataComponentType<Map<UUID, List<Integer>>>> STORAGE_CHANNEL_EXTENSION_CARD_HIDDEN_CATEGORIES =
-		REGISTER
+	public static final Supplier<DataComponentType<Map<UUID, List<Integer>>>>
+		STORAGE_CHANNEL_EXTENSION_CARD_HIDDEN_CATEGORIES = REGISTER
 			.registerComponentType("storage_channel_extension_card_hidden_categories",
 				builder -> builder.persistent(Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.INT.listOf()))
 					.networkSynchronized(ByteBufCodecs.map(HashMap::new, UUIDUtil.STREAM_CODEC,
@@ -91,8 +99,8 @@ public final class AllDataComponents {
 				.networkSynchronized(
 					ByteBufCodecs.map(java.util.HashMap::new, UUIDUtil.STREAM_CODEC, ByteBufCodecs.STRING_UTF8)));
 
-	public static final Supplier<DataComponentType<Map<UUID, Map<UUID, List<Integer>>>>> TUNABLE_PORTABLE_TICKER_HIDDEN_CATEGORIES =
-		REGISTER
+	public static final Supplier<DataComponentType<Map<UUID, Map<UUID, List<Integer>>>>>
+		TUNABLE_PORTABLE_TICKER_HIDDEN_CATEGORIES = REGISTER
 			.registerComponentType("tunable_portable_ticker_hidden_categories",
 				builder -> builder.persistent(Codec.unboundedMap(UUIDUtil.STRING_CODEC,
 					Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.INT.listOf())))

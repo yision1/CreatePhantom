@@ -5,12 +5,19 @@ import java.util.UUID;
 import com.simibubi.create.content.kinetics.belt.BeltBlockEntity;
 import com.simibubi.create.content.kinetics.belt.BeltHelper;
 import com.simibubi.create.content.kinetics.belt.transport.TransportedItemStack;
+import com.yision.phantom.block.phantomport.PhantomPortReference;
 import com.yision.phantom.compat.sable.SableCompat;
+import com.yision.phantom.item.miniphantom.MiniPhantomDispatch;
 import com.yision.phantom.item.miniphantom.MiniPhantomItem;
+import com.yision.phantom.logistics.courier.flight.AirCourierFlightMath;
 import com.yision.phantom.logistics.courier.hud.AirCourierHudSync;
+import com.yision.phantom.registry.AllDataComponents;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 public final class AirCourierBeltHooks {
@@ -27,107 +34,110 @@ public final class AirCourierBeltHooks {
 		stack.sideOffset = stack.prevSideOffset = stack.getTargetSideOffset();
 	}
 
-	public static boolean tryLaunchCourier(BeltBlockEntity belt, TransportedItemStack stack) {
-		if (!AirCourierHelper.isCourierLaunchStack(stack.stack)) {
+	public static boolean tryLaunchCourierAtEnd(BeltBlockEntity belt, TransportedItemStack stack, float nextOffset) {
+		if (!(belt.getLevel() instanceof ServerLevel) || !AirCourierHelper.isCourierLaunchStack(stack.stack))
 			return false;
-		}
-		boolean beltMovementPositive = belt.getDirectionAwareBeltMovementSpeed() > 0;
-		if (!AirCourierLaunchRules.canLaunchFrom(belt, stack.insertedAt, beltMovementPositive)) {
+		float speed = belt.getDirectionAwareBeltMovementSpeed();
+		boolean atEnd = speed > 0 && nextOffset >= belt.beltLength - 0.5f
+			|| speed < 0 && nextOffset <= 0.5f;
+		if (!atEnd || !AirCourierLaunchRules.canLaunchFrom(belt, stack.insertedAt, speed > 0))
 			return false;
-		}
 
-		if (MiniPhantomItem.hasCargo(stack.stack)) {
-			return launchPackageCourier(belt, stack);
-		}
-		if (MiniPhantomItem.getReturnTarget(stack.stack).isPresent()) {
-			return launchReturningCarrierToPhantomPort(belt, stack);
-		}
-		if (MiniPhantomItem.getPlayerReturnTarget(stack.stack).isPresent()) {
-			return launchReturningCarrierToPlayer(belt, stack);
-		}
-		return false;
+		float previousOffset = stack.beltPosition;
+		stack.beltPosition = nextOffset;
+		boolean launched = MiniPhantomItem.hasCargo(stack.stack)
+			? launchPackageCourier(belt, stack)
+			: launchReturningCarrier(belt, stack);
+		if (!launched)
+			stack.beltPosition = previousOffset;
+		return launched;
+	}
+
+	public static void onCourierEjected(BeltBlockEntity belt, TransportedItemStack stack) {
+		if (!(belt.getLevel() instanceof ServerLevel level) || !MiniPhantomItem.hasCargo(stack.stack))
+			return;
+		MiniPhantomDispatch dispatch = stack.stack.get(AllDataComponents.MINI_PHANTOM_DISPATCH.get());
+		if (dispatch == null || dispatch.player().isEmpty())
+			return;
+		AirCourierDeliveryService.notifyFailure(level.getServer(), MiniPhantomItem.copyCargoPackage(stack.stack),
+			dispatch.player().get(), null, dispatch.id());
 	}
 
 	private static boolean launchPackageCourier(BeltBlockEntity belt, TransportedItemStack stack) {
-		if (!(belt.getLevel() instanceof ServerLevel serverLevel)) {
-			return true;
-		}
+		if (!(belt.getLevel() instanceof ServerLevel level))
+			return false;
 
 		var box = MiniPhantomItem.copyCargoPackage(stack.stack);
-		var sourceReturnTarget = MiniPhantomItem.getReturnTarget(stack.stack);
-		var sourcePhantomPortDimension = sourceReturnTarget.map(target -> target.dimension())
-			.orElse(serverLevel.dimension());
-		var sourcePhantomPortPos = sourceReturnTarget.map(target -> target.pos())
-			.orElseGet(() -> AirCourierHelper.findSourcePhantomPortPos(belt));
-		AirCourierTarget target = AirCourierDispatchService.resolvePackageTarget(serverLevel, box,
-			Vec3.atCenterOf(belt.getBlockPos()), sourcePhantomPortDimension, sourcePhantomPortPos);
-		if (target == null) {
-			return false;
-		}
-
-		LaunchGeometry launch = getLaunchGeometry(serverLevel, belt, stack);
-		UUID taskId = UUID.randomUUID();
-		UUID hudEntryId = MiniPhantomItem.getHudEntryId(stack.stack);
-
-		AirCourierTask task = switch (target) {
-			case AirCourierTarget.PhantomPortTarget phantomPort -> AirCourierTask.forPackageToAirport(
-				taskId, box, serverLevel, phantomPort.dimension(), phantomPort.pos(),
-				launch.spawnPos(), launch.direction(), launch.motion(),
-				sourcePhantomPortDimension, sourcePhantomPortPos, null, hudEntryId, null);
-			case AirCourierTarget.PlayerTarget player -> {
-				ServerPlayer targetPlayer = serverLevel.getServer().getPlayerList().getPlayer(player.playerId());
-				yield targetPlayer != null
-					? AirCourierTask.forPackageToPlayer(taskId, box, serverLevel, player.playerId(),
-						player.dimension(), launch.spawnPos(), launch.direction(), launch.motion(),
-						sourcePhantomPortDimension, sourcePhantomPortPos, null, hudEntryId, null)
-					: null;
+		var dispatch = stack.stack.get(AllDataComponents.MINI_PHANTOM_DISPATCH.get());
+		PhantomPortReference sourcePort = null;
+		PhantomPortReference targetPort = null;
+		ResourceKey<Level> sourceDimension;
+		BlockPos sourcePos;
+		AirCourierTarget target;
+		if (dispatch != null) {
+			sourcePort = dispatch.source();
+			targetPort = dispatch.port().orElse(null);
+			sourceDimension = sourcePort.dimension();
+			sourcePos = sourcePort.pos();
+			if (targetPort != null) {
+				target = new AirCourierTarget.PhantomPortTarget(targetPort.dimension(), targetPort.pos());
+			} else if (dispatch.player().isPresent()) {
+				target = new AirCourierTarget.PlayerTarget(dispatch.player().get(), dispatch.dimension());
+			} else {
+				return false;
 			}
+		} else {
+			var source = MiniPhantomItem.getReturnTarget(stack.stack);
+			sourceDimension = source.map(value -> value.dimension()).orElse(level.dimension());
+			sourcePos = source.map(value -> value.pos())
+				.orElseGet(() -> AirCourierHelper.findSourcePhantomPortPos(belt));
+			target = AirCourierDispatchService.resolvePackageTarget(level, box,
+				belt.getBlockPos().getCenter(), sourceDimension, sourcePos);
+			if (target == null)
+				return false;
+		}
+
+		LaunchGeometry launch = getLaunchGeometry(level, belt, stack);
+		UUID id = dispatch != null ? dispatch.id() : UUID.randomUUID();
+		UUID hudEntry = MiniPhantomItem.getHudEntryId(stack.stack);
+		AirCourierTask task = switch (target) {
+			case AirCourierTarget.PhantomPortTarget port -> AirCourierTask.forPackageToAirport(
+				id, box, level, port.dimension(), port.pos(), launch.spawnPos(), launch.direction(), launch.motion(),
+				sourceDimension, sourcePos, null, hudEntry, null);
+			case AirCourierTarget.PlayerTarget player -> AirCourierTask.forPackageToPlayer(
+				id, box, level, player.playerId(), player.dimension(), launch.spawnPos(), launch.direction(),
+				launch.motion(), sourceDimension, sourcePos, null, hudEntry, null);
 		};
-		if (task == null) {
+		task.setPortReferences(sourcePort, targetPort);
+		if (!AirCourierTaskManager.addTask(level.getServer(), task))
 			return false;
-		}
-
-		AirCourierTaskManager.addTask(serverLevel.getServer(), task);
-		AirCourierHudSync.onCourierTaskStarted(serverLevel.getServer(), task);
+		AirCourierHudSync.onCourierTaskStarted(level.getServer(), task);
 		return true;
 	}
 
-	private static boolean launchReturningCarrierToPhantomPort(BeltBlockEntity belt, TransportedItemStack stack) {
-		var returnTarget = MiniPhantomItem.getReturnTarget(stack.stack);
-		if (returnTarget.isEmpty()) {
+	private static boolean launchReturningCarrier(BeltBlockEntity belt, TransportedItemStack stack) {
+		if (!(belt.getLevel() instanceof ServerLevel level))
 			return false;
-		}
-		if (!(belt.getLevel() instanceof ServerLevel serverLevel)) {
-			return true;
-		}
 
-		var target = returnTarget.get();
-		LaunchGeometry launch = getLaunchGeometry(serverLevel, belt, stack);
-		AirCourierTask task = AirCourierTask.forCarrierReturn(
-			UUID.randomUUID(), serverLevel, target.dimension(), target.pos(),
-			launch.spawnPos(), launch.direction(), launch.motion());
-
-		AirCourierTaskManager.addTask(serverLevel.getServer(), task);
-		return true;
-	}
-
-	private static boolean launchReturningCarrierToPlayer(BeltBlockEntity belt, TransportedItemStack stack) {
-		var returnTarget = MiniPhantomItem.getPlayerReturnTarget(stack.stack);
-		if (returnTarget.isEmpty()) {
-			return false;
+		LaunchGeometry launch = getLaunchGeometry(level, belt, stack);
+		var portTarget = MiniPhantomItem.getReturnTarget(stack.stack);
+		AirCourierTask task;
+		if (portTarget.isPresent()) {
+			var target = portTarget.get();
+			task = AirCourierTask.forCarrierReturn(UUID.randomUUID(), level, target.dimension(), target.pos(),
+				launch.spawnPos(), launch.direction(), launch.motion());
+			task.setPortReferences(null, stack.stack.get(AllDataComponents.MINI_PHANTOM_RETURN_PORT.get()));
+		} else {
+			var playerTarget = MiniPhantomItem.getPlayerReturnTarget(stack.stack);
+			if (playerTarget.isEmpty())
+				return false;
+			UUID playerId = playerTarget.get();
+			ServerPlayer player = level.getServer().getPlayerList().getPlayer(playerId);
+			ResourceKey<Level> dimension = player != null ? player.serverLevel().dimension() : level.dimension();
+			task = AirCourierTask.forCarrierReturnToPlayer(UUID.randomUUID(), level, playerId, dimension,
+				launch.spawnPos(), launch.direction(), launch.motion());
 		}
-		if (!(belt.getLevel() instanceof ServerLevel serverLevel)) {
-			return true;
-		}
-		ServerPlayer player = serverLevel.getServer().getPlayerList().getPlayer(returnTarget.get());
-		LaunchGeometry launch = getLaunchGeometry(serverLevel, belt, stack);
-		AirCourierTask task = AirCourierTask.forCarrierReturnToPlayer(
-			UUID.randomUUID(), serverLevel, returnTarget.get(),
-			player != null ? player.serverLevel().dimension() : serverLevel.dimension(),
-			launch.spawnPos(), launch.direction(), launch.motion());
-
-		AirCourierTaskManager.addTask(serverLevel.getServer(), task);
-		return true;
+		return AirCourierTaskManager.addTask(level.getServer(), task);
 	}
 
 	private static Vec3 getSpawnPos(BeltBlockEntity belt, TransportedItemStack stack, Vec3 launchMotion) {
@@ -137,8 +147,9 @@ public final class AirCourierBeltHooks {
 
 	private static LaunchGeometry getLaunchGeometry(ServerLevel level, BeltBlockEntity belt,
 		TransportedItemStack stack) {
-		Vec3 localDirection = AirCourierHelper.getCourierLaunchDirection(belt, stack);
-		Vec3 localMotion = AirCourierHelper.getCourierLaunchMotion(belt, stack);
+		Vec3 localDirection = Vec3.atLowerCornerOf(belt.getMovementFacing().getNormal());
+		float movementSpeed = Math.max(Math.abs(belt.getBeltMovementSpeed()), 1 / 8f);
+		Vec3 localMotion = AirCourierFlightMath.launchMotion(localDirection, movementSpeed);
 		Vec3 localSpawnPos = getSpawnPos(belt, stack, localMotion);
 		return new LaunchGeometry(
 			SableCompat.projectOutOfSubLevel(level, localSpawnPos),

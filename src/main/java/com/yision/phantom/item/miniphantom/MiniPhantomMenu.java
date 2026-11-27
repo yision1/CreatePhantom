@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.logistics.box.PackageItem;
+import com.yision.phantom.logistics.address.PhantomAddressRules;
 import com.yision.phantom.registry.AllAttachmentTypes;
 import com.yision.phantom.registry.AllItems;
 import com.yision.phantom.registry.AllMenuTypes;
@@ -39,6 +40,7 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 	private final boolean serverTransaction;
 	private final boolean openedWithCargo;
 	private final ItemStack initialCargoPackage;
+	private final ItemStack ownerStack;
 
 	public final Player player;
 	public final Inventory playerInventory;
@@ -58,6 +60,7 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 		this.clipboardInventory.setStackInSlot(0, ItemStack.OPTIONAL_STREAM_CODEC.decode(extraData));
 		this.clipboardInventory.setAddress(extraData.readUtf());
 		this.serverTransaction = false;
+		this.ownerStack = ItemStack.EMPTY;
 		this.openedWithCargo = MiniPhantomItem.hasCargo(openedStack);
 		this.initialCargoPackage = MiniPhantomItem.copyCargoPackage(openedStack);
 		this.initialAddress = readInitialContents(openedStack, clipboardInventory.getAddress());
@@ -75,6 +78,7 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 		this.hand = hand;
 		this.clipboardInventory = player.getData(AllAttachmentTypes.MINI_PHANTOM_CLIPBOARD);
 		this.serverTransaction = true;
+		this.ownerStack = openedStack;
 		this.openedWithCargo = MiniPhantomItem.hasCargo(openedStack);
 		this.initialCargoPackage = MiniPhantomItem.copyCargoPackage(openedStack);
 		this.initialAddress = readInitialContents(this.openedStack, clipboardInventory.getAddress());
@@ -172,35 +176,36 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 		if (normalizedAddress.length() > 64)
 			normalizedAddress = normalizedAddress.substring(0, 64);
 		player.getData(AllAttachmentTypes.MINI_PHANTOM_CLIPBOARD).setAddress(normalizedAddress);
-		ItemStack packageBox = createPackageBox();
-		if (packageBox.isEmpty()) {
-			clearPackageInventory();
-			confirmed = true;
-			broadcastChanges();
-			return true;
-		}
-
-		if (!normalizedAddress.isEmpty()) {
-			PackageItem.addAddress(packageBox, normalizedAddress);
-		}
-
-		ItemStack heldStack = player.getItemInHand(hand);
-		if (!heldStack.is(AllItems.MINI_PHANTOM.get()) || heldStack.isEmpty()) {
-			return false;
-		}
-		if (openedWithCargo || heldStack.getCount() == 1) {
-			MiniPhantomItem.loadCargo(heldStack, packageBox);
-		} else {
-			ItemStack loadedPhantom = heldStack.copy();
-			loadedPhantom.setCount(1);
+		ItemStack packageBox = preparePackage(normalizedAddress);
+		if (openedWithCargo || ownerStack.getCount() == 1) {
+			if (!packageBox.isEmpty())
+				MiniPhantomItem.loadCargo(ownerStack, packageBox);
+		} else if (!packageBox.isEmpty()) {
+			ItemStack loadedPhantom = ownerStack.copyWithCount(1);
 			MiniPhantomItem.loadCargo(loadedPhantom, packageBox);
-			heldStack.shrink(1);
-			player.getInventory().placeItemBackInInventory(loadedPhantom);
+			ownerStack.shrink(1);
+			playerInventory.placeItemBackInInventory(loadedPhantom);
 		}
 		clearPackageInventory();
 		confirmed = true;
 		broadcastChanges();
 		return true;
+	}
+
+	private ItemStack preparePackage(String address) {
+		boolean unchanged = contentsMatchInitialPackage();
+		ItemStack box = unchanged ? initialCargoPackage.copy() : createPackageBox();
+		if (!unchanged || !PhantomAddressRules.canonical(PackageItem.getAddress(initialCargoPackage))
+			.equals(PhantomAddressRules.canonical(address))) {
+			MiniPhantomItem.clearDispatch(ownerStack);
+		}
+		if (!box.isEmpty() && !PackageItem.getAddress(box).equals(address)) {
+			if (address.isBlank())
+				PackageItem.clearAddress(box);
+			else
+				PackageItem.addAddress(box, address);
+		}
+		return box;
 	}
 
 	private ItemStack createPackageBox() {
@@ -227,20 +232,15 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 	}
 
 	private void closeTransaction(Player player) {
-		if (openedWithCargo) {
-			ItemStack heldStack = player.getItemInHand(hand);
-			if (heldStack.is(AllItems.MINI_PHANTOM.get()) && !heldStack.isEmpty()) {
-				boolean unchanged = contentsMatchInitialPackage();
-				ItemStack packageBox = unchanged ? initialCargoPackage.copy() : createPackageBox();
-				if (!packageBox.isEmpty()) {
-					if (!unchanged && !initialAddress.isBlank())
-						PackageItem.addAddress(packageBox, initialAddress);
-					MiniPhantomItem.loadCargo(heldStack, packageBox);
-				}
-				clearPackageInventory();
-				return;
-			}
+		if (openedWithCargo && player.getItemInHand(hand) == ownerStack && !ownerStack.isEmpty()) {
+			ItemStack box = preparePackage(initialAddress);
+			if (!box.isEmpty())
+				MiniPhantomItem.loadCargo(ownerStack, box);
+			clearPackageInventory();
+			return;
 		}
+		if (openedWithCargo)
+			MiniPhantomItem.clearDispatch(ownerStack);
 		returnPackageContents(player);
 	}
 
@@ -275,7 +275,7 @@ public class MiniPhantomMenu extends AbstractContainerMenu {
 	@Override
 	public boolean stillValid(Player player) {
 		ItemStack heldStack = player.getItemInHand(hand);
-		return heldStack.is(AllItems.MINI_PHANTOM.get());
+		return heldStack.is(AllItems.MINI_PHANTOM.get()) && (!serverTransaction || heldStack == ownerStack);
 	}
 
 	@Override

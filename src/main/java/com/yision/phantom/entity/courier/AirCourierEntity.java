@@ -505,7 +505,8 @@ public class AirCourierEntity extends Entity implements Container {
 				return InteractionResult.CONSUME;
 			}
 
-			AirCourierTaskManager.addTask(serverLevel.getServer(), task);
+			if (!AirCourierTaskManager.addTask(serverLevel.getServer(), task))
+				return InteractionResult.CONSUME;
 			AirCourierHudSync.onCourierTaskStarted(serverLevel.getServer(), task);
 
 			level().playSound(null, blockPosition(), SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 0.8f,
